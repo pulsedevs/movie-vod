@@ -36,7 +36,7 @@
     "@tailwindcss/line-clamp": "^0.4.4",
     "@types/puppeteer": "^5.4.7",
     "@types/video.js": "^7.3.58",
-    "autoprefixer": "^10.4.21",
+    "autoprefixer": "^10.5.5",
     "cheerio": "^1.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
