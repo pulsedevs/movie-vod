@@ -63,20 +63,33 @@ export default function LemurVodPlayer({ tmdbId, poster, className }: Props) {
       video.play().catch(() => { video.muted = true; video.play().catch(() => {}); });
     };
 
+    // hls.js (MSE) FIRST — never trust canPlayType for HLS. Chromium on Windows answers "maybe" to
+    // canPlayType('application/vnd.apple.mpegurl') yet cannot play an m3u8 natively, so the native
+    // path left the <video> parked on the playlist URL forever. Only browsers with no MSE at all
+    // (iOS Safari) get the native fallback — there it genuinely works.
+    if (Hls.isSupported()) {
+      const hls = new Hls({ enableWorker: true, lowLatencyMode: false });
+      let recovered = false;
+      hls.loadSource(state.url);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, start);   // the call that actually begins playback under MSE
+      hls.on(Hls.Events.ERROR, (_e, data) => {
+        if (!data.fatal) return;
+        // Standard hls.js recovery: retry the network once, or nudge the media pipeline once,
+        // before giving up — r2.dev / a flaky line shouldn't kill the whole session.
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !recovered) { recovered = true; hls.startLoad(); return; }
+        if (data.type === Hls.ErrorTypes.MEDIA_ERROR && !recovered) { recovered = true; hls.recoverMediaError(); return; }
+        hls.destroy();
+        setState({ s: 'error', msg: `playback error (${data.type})` });
+      });
+      return () => hls.destroy();
+    }
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = state.url;                 // Safari / iOS native HLS
+      video.src = state.url;                 // iOS Safari native HLS (no MSE there)
       video.addEventListener('loadedmetadata', start, { once: true });
       return () => video.removeEventListener('loadedmetadata', start);
     }
-    if (!Hls.isSupported()) { setState({ s: 'error', msg: 'HLS not supported in this browser' }); return; }
-    const hls = new Hls({ enableWorker: true, lowLatencyMode: false });
-    hls.loadSource(state.url);
-    hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, start);   // <-- the missing call that actually begins playback
-    hls.on(Hls.Events.ERROR, (_e, data) => {
-      if (data.fatal) setState({ s: 'error', msg: `playback error (${data.type})` });
-    });
-    return () => hls.destroy();
+    setState({ s: 'error', msg: 'HLS not supported in this browser' });
   }, [state]);
 
   if (state.s === 'ready') {
