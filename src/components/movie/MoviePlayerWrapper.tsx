@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useRef, useMemo } from 'react';
 import MoviePlayer from '@/components/player/MoviePlayer';
+import LemurVodPlayer from '@/components/player/LemurVodPlayer';
 import dynamic from 'next/dynamic';
 const FourKPlayer = dynamic(() => import('@/components/player/FourKPlayer'), { ssr: false });
 import { StreamSource } from '@/types';
@@ -215,10 +216,32 @@ const MoviePlayerWrapper: React.FC<MoviePlayerWrapperProps> = (props) => {
         <p>There was an error loading the player. Please try again later.</p>
       </div>
     );
-  }  if (!sources || sources.length === 0) {
+  }
+  // Movies don't use the external `sources` array (they play via the VOD backend below), so an
+  // empty sources list must NOT block them with the legacy "loading sources" spinner.
+  if (props.mediaType !== 'movie' && (!sources || sources.length === 0)) {
     return (
       <div className="my-8">
         <StreamingSourcesLoading />
+      </div>
+    );
+  }
+
+  // LemurPlay VOD: movies play OUR stream (panel → HLS → R2) via the backend, not an external embed.
+  // TV still uses the legacy path until series playback is wired end-to-end.
+  if (props.mediaType === 'movie') {
+    return (
+      <div id="movie-player-section" className="relative w-full max-w-full mx-0 px-0" ref={playerRef}>
+        <div className={disableAutoScroll ? '' : 'scroll-mt-16'}>
+          <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
+            <LemurVodPlayer
+              tmdbId={props.mediaId}
+              poster={props.backdrop_path
+                ? `https://image.tmdb.org/t/p/w1280${props.backdrop_path}` : undefined}
+              className="w-full h-full"
+            />
+          </div>
+        </div>
       </div>
     );
   }

@@ -55,10 +55,13 @@ export default function MovieDetailV2({
       }}
       trailerId={trailerId}
     >
-      {sources && sources.length > 0 ? (
+      {/* Movies ALWAYS render the player: playability comes from the LemurPlay VOD backend
+          (resolved by TMDB id inside MoviePlayerWrapper → LemurVodPlayer), not the legacy external
+          `sources` array. The old sources.length gate hid our player behind "Unavailable". */}
+      {true ? (
         <Suspense fallback={<MoviePlayerLoading />}>
           <MoviePlayerWrapper
-            sources={sources}
+            sources={sources || []}
             mediaType="movie"
             mediaId={movie.id.toString()}
             title={movie.title}
