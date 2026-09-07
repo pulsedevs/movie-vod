@@ -62,7 +62,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@next/bundle-analyzer": "^15.3.3",
-    "@tailwindcss/postcss": "^4.1.5",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/cheerio": "^0.22.35",
     "@types/hls.js": "^0.13.3",
     "@types/node": "^20",
