@@ -1,0 +1,36 @@
+<svg viewBox="0 0 92 86" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="BoredFlix">
+  <title>BoredFlix</title>
+  <rect width="92" height="86" fill="#000000"/>
+  <!-- left arm -->
+  <rect x="2" y="30" width="13" height="38" rx="6" fill="#731717"/>
+  <ellipse cx="8.5" cy="30" rx="6.5" ry="3.5" fill="#8B1C1C"/>
+  <!-- right arm -->
+  <rect x="77" y="30" width="13" height="38" rx="6" fill="#731717"/>
+  <ellipse cx="83.5" cy="30" rx="6.5" ry="3.5" fill="#8B1C1C"/>
+  <!-- back panel -->
+  <rect x="8" y="8" width="76" height="44" rx="9" fill="#8B1C1C"/>
+  <rect x="12" y="9" width="68" height="5" rx="3" fill="#C03030" opacity="0.38"/>
+  <!-- tufting -->
+  <line x1="10" y1="22" x2="82" y2="22" stroke="#6B1515" stroke-width="0.9" opacity="0.9"/>
+  <line x1="10" y1="36" x2="82" y2="36" stroke="#6B1515" stroke-width="0.9" opacity="0.9"/>
+  <line x1="24" y1="10" x2="24" y2="50" stroke="#6B1515" stroke-width="0.9" opacity="0.9"/>
+  <line x1="46" y1="10" x2="46" y2="50" stroke="#6B1515" stroke-width="0.9" opacity="0.9"/>
+  <line x1="68" y1="10" x2="68" y2="50" stroke="#6B1515" stroke-width="0.9" opacity="0.9"/>
+  <circle cx="24" cy="22" r="2" fill="#5A1212"/>
+  <circle cx="46" cy="22" r="2" fill="#5A1212"/>
+  <circle cx="68" cy="22" r="2" fill="#5A1212"/>
+  <circle cx="24" cy="36" r="2" fill="#5A1212"/>
+  <circle cx="46" cy="36" r="2" fill="#5A1212"/>
+  <circle cx="68" cy="36" r="2" fill="#5A1212"/>
+  <!-- seat -->
+  <rect x="15" y="50" width="62" height="22" rx="6" fill="#9E2020"/>
+  <rect x="16" y="51" width="60" height="3" rx="2" fill="#BF2B2B" opacity="0.4"/>
+  <line x1="36" y1="51" x2="36" y2="71" stroke="#7A1818" stroke-width="0.8" opacity="0.7"/>
+  <line x1="56" y1="51" x2="56" y2="71" stroke="#7A1818" stroke-width="0.8" opacity="0.7"/>
+  <!-- legs -->
+  <rect x="19" y="70" width="7" height="16" rx="2" fill="#521010"/>
+  <rect x="66" y="70" width="7" height="16" rx="2" fill="#521010"/>
+  <!-- play triangle on backrest -->
+  <polygon points="40,28 40,40 55,34" fill="#F59E0B"/>
+  <polygon points="41.5,30 41.5,38 52,34" fill="#FDE68A" opacity="0.32"/>
+</svg>

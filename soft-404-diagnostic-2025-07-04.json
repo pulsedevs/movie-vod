@@ -1,0 +1,37 @@
+{
+  "tmdbTests": [
+    {
+      "success": true,
+      "movieId": 56292,
+      "title": "Mission: Impossible - Ghost Protocol",
+      "duration": 2137,
+      "hasOverview": true,
+      "hasGenres": true,
+      "hasCredits": true,
+      "hasVideos": true,
+      "statusCode": 200
+    }
+  ],
+  "pageTests": [
+    {
+      "success": true,
+      "movieId": 56292,
+      "url": "https://www.boredflix.cc/movie/56292/movie-56292",
+      "statusCode": 200,
+      "duration": 5446,
+      "contentLength": 459,
+      "hasMovieTitle": false,
+      "hasPlayer": false,
+      "hasLoadingOnly": false,
+      "hasErrorContent": false,
+      "possibleSoft404": true
+    }
+  ],
+  "summary": {
+    "tmdbSuccesses": 1,
+    "tmdbFailures": 0,
+    "pageSuccesses": 1,
+    "pageFailures": 0,
+    "possibleSoft404s": 1
+  }
+}

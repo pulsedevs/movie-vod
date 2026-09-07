@@ -1,0 +1,137 @@
+/* CLS Fix Styles - Add to globals.css */
+
+/* 1. Reserve space for SurfShark banner to prevent layout shift */
+.layout-with-banner {
+  /* Reserve space for banner on mobile */
+  padding-top: var(--surfshark-banner-height-mobile, 50px);
+}
+
+@media (min-width: 768px) {
+  .layout-with-banner {
+    /* Reserve space for banner on desktop */
+    padding-top: var(--surfshark-banner-height-desktop, 48px);
+  }
+}
+
+/* 2. Aspect ratio containers for images to prevent CLS */
+.backdrop-container {
+  aspect-ratio: 16 / 9;
+  position: relative;
+  width: 100%;
+}
+
+.poster-container {
+  aspect-ratio: 2 / 3;
+  position: relative;
+  width: 100%;
+}
+
+/* 3. Skeleton loading states */
+.skeleton {
+  background: linear-gradient(90deg, #374151 25%, #4B5563 50%, #374151 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* 4. Cast grid with fixed dimensions */
+.cast-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 1rem;
+}
+
+.cast-item {
+  aspect-ratio: 2 / 3;
+  min-height: 150px;
+}
+
+/* 5. Player container with fixed aspect ratio */
+.player-container {
+  aspect-ratio: 16 / 9;
+  position: relative;
+  width: 100%;
+  min-height: 300px;
+}
+
+@media (min-width: 768px) {
+  .player-container {
+    min-height: 400px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .player-container {
+    min-height: 500px;
+  }
+}
+
+/* 6. VideoJS mobile optimizations for VAST ads */
+.video-js {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+}
+
+/* Ensure ad player maintains aspect ratio on mobile */
+.ad-player {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+}
+
+/* Mobile-specific VideoJS fixes */
+@media (max-width: 767px) {
+  .video-js {
+    font-size: 14px;
+  }
+  
+  .video-js .vjs-big-play-button {
+    width: 60px !important;
+    height: 60px !important;
+    line-height: 60px !important;
+    border-radius: 50%;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    margin: 0 !important;
+  }
+  
+  .video-js .vjs-control-bar {
+    height: 40px;
+    font-size: 12px;
+  }
+}
+
+/* Prevent VideoJS from overriding container dimensions */
+.video-js.vjs-fluid {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
+/* Fix for VAST ad overlay positioning */
+.vjs-overlay {
+  z-index: 100 !important;
+}
+
+/* Ensure responsive behavior is maintained */
+.video-js .vjs-tech {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+}

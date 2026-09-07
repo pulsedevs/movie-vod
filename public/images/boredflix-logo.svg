@@ -1,0 +1,20 @@
+<svg viewBox="0 0 400 90" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="BoredFlix">
+  <title>BoredFlix</title>
+  <rect x="30" y="72" width="11" height="14" rx="3" fill="#521010"/>
+  <rect x="76" y="72" width="11" height="14" rx="3" fill="#521010"/>
+  <rect x="11" y="20" width="88" height="47" rx="13" fill="#8B1C1C"/>
+  <rect x="14" y="22" width="82" height="4" rx="2" fill="#C03030" opacity="0.38"/>
+  <rect x="16" y="56" width="78" height="18" rx="8" fill="#9E2020"/>
+  <rect x="17" y="57" width="76" height="3" rx="1.5" fill="#BF2B2B" opacity="0.4"/>
+  <path d="M 6,65 Q 6,74 13,74 Q 20,74 20,65 L 20,54 Q 20,38 13,36 Q 6,38 6,54 Z" fill="#731717"/>
+  <path d="M 104,65 Q 104,74 97,74 Q 90,74 90,65 L 90,54 Q 90,38 97,36 Q 104,38 104,54 Z" fill="#731717"/>
+  <circle cx="55" cy="43.5" r="14" fill="#731717"/>
+  <circle cx="55" cy="43.5" r="13" fill="none" stroke="#F5F5F4" stroke-width="1.5"/>
+  <polygon points="51,36 51,51 64,43.5" fill="#F5F5F4"/>
+  <text x="100" y="72"
+    font-family="Outfit, system-ui, -apple-system, sans-serif"
+    font-size="56" font-weight="700"
+    letter-spacing="-1.5" text-rendering="optimizeLegibility">
+    <tspan fill="#F5F5F4">Bored</tspan><tspan fill="#E2D4BE">Flix</tspan>
+  </text>
+</svg>

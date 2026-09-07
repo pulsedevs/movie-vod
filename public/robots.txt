@@ -1,0 +1,30 @@
+User-agent: *
+Allow: /
+
+# Important content — crawl these
+Allow: /movie/
+Allow: /tv/
+Allow: /browse/
+
+# Preview/shell routes — same content as canonical. These now send `noindex` in the page itself,
+# which is strictly better than blocking here: Disallow stops Googlebot FETCHING the page, so it
+# could never read the noindex/canonical and left those URLs stranded as duplicates with no
+# user-selected canonical. Crawlable + noindex lets Google drop them for good.
+
+# Trust pages (/about, /privacy, /terms, /contact) are intentionally NOT blocked: they are
+# sitemapped and must stay crawlable, and they are the only pages that answer "is boredflix safe"
+# in our own voice instead of leaving it to Reddit and competitors.
+
+# Non-content pages
+Disallow: /admin
+Disallow: /api/
+Disallow: /library
+Disallow: /parties
+Disallow: /party/
+Disallow: /search
+Disallow: /auth/
+Disallow: /image-test
+Disallow: /mobile-test
+
+# Sitemap
+Sitemap: https://boredflix.tv/sitemap.xml
