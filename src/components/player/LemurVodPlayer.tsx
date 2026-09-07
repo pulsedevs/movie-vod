@@ -56,14 +56,23 @@ export default function LemurVodPlayer({ tmdbId, poster, className }: Props) {
   useEffect(() => {
     if (state.s !== 'ready' || !videoRef.current) return;
     const video = videoRef.current;
+
+    // With MSE the autoPlay attribute is unreliable — you must call play() once media is ready.
+    // Try unmuted; if the browser blocks autoplay, retry muted (always allowed) so it still starts.
+    const start = () => {
+      video.play().catch(() => { video.muted = true; video.play().catch(() => {}); });
+    };
+
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = state.url;
-      return;
+      video.src = state.url;                 // Safari / iOS native HLS
+      video.addEventListener('loadedmetadata', start, { once: true });
+      return () => video.removeEventListener('loadedmetadata', start);
     }
     if (!Hls.isSupported()) { setState({ s: 'error', msg: 'HLS not supported in this browser' }); return; }
     const hls = new Hls({ enableWorker: true, lowLatencyMode: false });
     hls.loadSource(state.url);
     hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, start);   // <-- the missing call that actually begins playback
     hls.on(Hls.Events.ERROR, (_e, data) => {
       if (data.fatal) setState({ s: 'error', msg: `playback error (${data.type})` });
     });
