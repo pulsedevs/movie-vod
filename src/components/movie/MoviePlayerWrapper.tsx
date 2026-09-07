@@ -236,6 +236,7 @@ const MoviePlayerWrapper: React.FC<MoviePlayerWrapperProps> = (props) => {
           <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
             <LemurVodPlayer
               tmdbId={props.mediaId}
+              title={props.title}
               poster={props.backdrop_path
                 ? `https://image.tmdb.org/t/p/w1280${props.backdrop_path}` : undefined}
               className="w-full h-full"
