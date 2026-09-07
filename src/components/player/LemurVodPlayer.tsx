@@ -102,14 +102,18 @@ export default function LemurVodPlayer({ tmdbId, poster, className }: Props) {
         gap: 10, textAlign: 'center', padding: 20,
       }}
     >
-      {state.s === 'preparing' && (
-        <>
-          <div style={{ fontSize: 30 }}>🐒</div>
-          <div style={{ fontWeight: 800 }}>Getting your movie ready…</div>
-          <div style={{ fontSize: 13, opacity: 0.7 }}>First play prepares the stream — hang tight.</div>
-        </>
+      {(state.s === 'preparing' || state.s === 'loading') && (
+        <div
+          role="status"
+          aria-label="Loading"
+          style={{
+            width: 46, height: 46, borderRadius: '50%',
+            border: '4px solid rgba(255,255,255,0.15)', borderTopColor: '#eef1f5',
+            animation: 'lpspin 0.8s linear infinite',
+          }}
+        />
       )}
-      {state.s === 'loading' && <div style={{ opacity: 0.7 }}>Loading…</div>}
+      <style>{'@keyframes lpspin{to{transform:rotate(360deg)}}'}</style>
       {state.s === 'unavailable' && <div style={{ opacity: 0.8 }}>Not available to stream yet.</div>}
       {state.s === 'error' && <div style={{ color: '#f5a524' }}>⚠ {state.msg}</div>}
     </div>
