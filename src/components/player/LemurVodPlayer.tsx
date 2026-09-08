@@ -154,7 +154,9 @@ export default function LemurVodPlayer({ tmdbId, title, poster, className }: Pro
         const r = await fetch(`/api/vod/play/movie/${tmdbId}`, { cache: 'no-store' });
         const d = await r.json();
         if (!alive) return;
-        if (r.status === 404 || d.status === 'disabled') { setState({ s: 'unavailable' }); return; }
+        // 404 = not in the catalog; disabled = VOD switched off; unavailable = every copy the panel
+        // has is something a browser can't decode (HEVC/10-bit) — nothing to wait for.
+        if (r.status === 404 || d.status === 'disabled' || d.status === 'unavailable') { setState({ s: 'unavailable' }); return; }
         if (d.status === 'ready' && d.url) { setState({ s: 'ready', url: d.url }); return; }
         if (d.status === 'preparing') {
           setState({ s: 'preparing' });
