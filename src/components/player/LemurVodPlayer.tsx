@@ -22,7 +22,7 @@ export interface Version {
 type PlayState =
   | { s: 'loading' }
   | { s: 'preparing'; versions?: Version[] }
-  | { s: 'ready'; url: string; sid?: string; versions?: Version[] }
+  | { s: 'ready'; url: string; sid?: string; versions?: Version[]; duration?: number }
   | { s: 'unavailable'; versions?: Version[]; reason?: string }
   | { s: 'error'; msg: string };
 
@@ -94,6 +94,7 @@ const CSS = `
 .lp-bar{position:relative;height:22px;display:flex;align-items:center;cursor:pointer;touch-action:none}
 .lp-track{position:relative;width:100%;height:4px;background:rgba(255,255,255,.22);border-radius:2px;overflow:hidden;transition:height .12s}
 .lp-bar:hover .lp-track,.lp-bar.scrub .lp-track{height:6px}
+.lp-avail{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.16)}
 .lp-buf{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.35)}
 .lp-played{position:absolute;left:0;top:0;bottom:0;background:var(--lp)}
 .lp-knob{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;background:var(--lp);transform:translate(-50%,-50%) scale(0);transition:transform .12s;box-shadow:0 0 0 4px rgba(74,222,128,.25)}
@@ -191,7 +192,7 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
         if (r.status === 404 || d.status === 'disabled' || d.status === 'unavailable') {
           setState({ s: 'unavailable', versions: d.versions, reason: d.reason }); return;
         }
-        if (d.status === 'ready' && d.url) { setState({ s: 'ready', url: d.url, sid: d.sid, versions: d.versions }); return; }
+        if (d.status === 'ready' && d.url) { setState({ s: 'ready', url: d.url, sid: d.sid, versions: d.versions, duration: Number(d.duration) || 0 }); return; }
         if (d.status === 'preparing') {
           setState({ s: 'preparing', versions: d.versions });
           // The backend long-polls ~8s for the first segment, so re-ask promptly while a title is fresh;
@@ -399,16 +400,18 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
     return Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
   };
   const seekFrac = (f: number) => {
-    const v = videoRef.current; if (!v || !dur) return;
-    v.currentTime = f * dur; setCur(f * dur);
+    const v = videoRef.current; if (!v || !full) return;
+    // can't seek into the part that hasn't been packaged yet — clamp to the packaged edge
+    const t = Math.min(f * full, packaging ? Math.max(0, dur - 0.5) : f * full);
+    v.currentTime = t; setCur(t);
   };
   const onBarDown = (e: RPointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
     scrubRef.current = true; setScrub(true);
-    const f = frac(e); setHover(f * dur); seekFrac(f); wake();
+    const f = frac(e); setHover(f * full); seekFrac(f); wake();
   };
   const onBarMove = (e: RPointerEvent<HTMLDivElement>) => {
-    const f = frac(e); setHover(f * dur);
+    const f = frac(e); setHover(f * full);
     if (scrubRef.current) seekFrac(f);
   };
   const onBarUp = (e: RPointerEvent<HTMLDivElement>) => {
@@ -450,8 +453,13 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
     );
   }
 
-  const pct = dur ? (cur / dur) * 100 : 0;
-  const bpct = dur ? Math.max(pct, (buf / dur) * 100) : 0;
+  // While a title is still packaging, video.duration is only what has been packaged so far;
+  // the backend tells us the film's real length so the bar and clock show the whole film.
+  const full = Math.max(dur || 0, (state.s === 'ready' && state.duration) || 0);
+  const packaging = full > (dur || 0) + 1;
+  const pct = full ? (cur / full) * 100 : 0;
+  const bpct = full ? Math.max(pct, (buf / full) * 100) : 0;
+  const apct = full && packaging ? (dur / full) * 100 : 0;
   const showUi = ui || !playing;
 
   return (
@@ -497,16 +505,17 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
         <div
           ref={barRef}
           className={`lp-bar ${scrub ? 'scrub' : ''}`}
-          role="slider" aria-label="Seek" aria-valuemin={0} aria-valuemax={Math.floor(dur)} aria-valuenow={Math.floor(cur)} aria-valuetext={fmt(cur)}
+          role="slider" aria-label="Seek" aria-valuemin={0} aria-valuemax={Math.floor(full)} aria-valuenow={Math.floor(cur)} aria-valuetext={fmt(cur)}
           onPointerDown={onBarDown} onPointerMove={onBarMove} onPointerUp={onBarUp} onPointerCancel={onBarUp} onPointerLeave={onBarLeave}
         >
           <div className="lp-track">
+            {packaging && <div className="lp-avail" style={{ width: `${apct}%` }} />}
             <div className="lp-buf" style={{ width: `${bpct}%` }} />
             <div className="lp-played" style={{ width: `${pct}%` }} />
           </div>
           <div className="lp-knob" style={{ left: `${pct}%` }} />
-          {hover != null && dur > 0 && (
-            <div className="lp-tip" style={{ left: `${(hover / dur) * 100}%` }}>{fmt(hover)}</div>
+          {hover != null && full > 0 && (
+            <div className="lp-tip" style={{ left: `${(hover / full) * 100}%` }}>{fmt(hover)}</div>
           )}
         </div>
 
@@ -522,7 +531,7 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
               aria-label="Volume" className="lp-range"
             />
           </div>
-          <div className="lp-time">{fmt(cur)} <span className="lp-dim">/ {fmt(dur)}</span></div>
+          <div className="lp-time">{fmt(cur)} <span className="lp-dim">/ {fmt(full)}</span></div>
           <div className="lp-spacer" />
           <div className="lp-speed">
             <button type="button" className="lp-btn lp-txt" onClick={() => setSpeedOpen(o => !o)} aria-haspopup="menu" aria-expanded={speedOpen} title="Playback speed">
