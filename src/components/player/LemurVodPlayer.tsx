@@ -144,6 +144,8 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
   const speedOpenRef = useRef(false);
 
   const [state, setState] = useState<PlayState>({ s: 'loading' });
+  const [repoll, setRepoll] = useState(0);        // bumps to re-ask the backend after a vanished playlist
+  const repolled = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [ended, setEnded] = useState(false);
   const [buffering, setBuffering] = useState(true);
@@ -202,7 +204,7 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
     };
     poll();
     return () => { alive = false; clearTimeout(timer); };
-  }, [tmdbId, pickSid, origLang]);
+  }, [tmdbId, pickSid, origLang, repoll]);
 
   // ── 2. Attach the stream. hls.js (MSE) FIRST — never trust canPlayType for HLS: Chromium on
   //       Windows answers "maybe" yet can't play an m3u8 natively. Native HLS only where there is
@@ -228,6 +230,11 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
       hls.on(Hls.Events.MANIFEST_PARSED, start);
       hls.on(Hls.Events.ERROR, (_e, data) => {
         if (!data.fatal) return;
+        // Playlist vanished (e.g. the R2 cache was wiped after the backend cached it as ready):
+        // ask the backend once more — it forgets the stale entry and re-packages.
+        if (data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR && !repolled.current) {
+          repolled.current = true; hls.destroy(); setState({ s: 'loading' }); setRepoll(r => r + 1); return;
+        }
         // Standard hls.js recovery: one network retry / one media nudge before giving up.
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !recovered) { recovered = true; hls.startLoad(); return; }
         if (data.type === Hls.ErrorTypes.MEDIA_ERROR && !recovered) { recovered = true; hls.recoverMediaError(); return; }
