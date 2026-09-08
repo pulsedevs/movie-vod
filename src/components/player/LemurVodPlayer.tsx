@@ -194,7 +194,9 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
         if (d.status === 'ready' && d.url) { setState({ s: 'ready', url: d.url, sid: d.sid, versions: d.versions }); return; }
         if (d.status === 'preparing') {
           setState({ s: 'preparing', versions: d.versions });
-          timer = setTimeout(() => poll(attempt + 1), Math.min(6000, 2000 + attempt * 500));
+          // The backend long-polls ~8s for the first segment, so re-ask promptly while a title is fresh;
+          // back off only once it's clearly queued behind other pulls.
+          timer = setTimeout(() => poll(attempt + 1), attempt < 15 ? 1000 : Math.min(6000, 2000 + attempt * 500));
           return;
         }
         setState({ s: 'error', msg: d.error || 'could not start playback' });
