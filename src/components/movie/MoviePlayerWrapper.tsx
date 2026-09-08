@@ -15,6 +15,8 @@ interface MoviePlayerWrapperProps {
   mediaType: 'movie' | 'tv';
   mediaId: string | number;
   title: string;
+  /** TMDB original_language (ISO-639-1) — the VOD backend accepts original OR English audio. */
+  origLang?: string;
   poster_path?: string | null;
   backdrop_path?: string | null;  // Add backdrop for hero-style poster
   trailerId?: string;          // Optional YouTube trailer ID for comments
@@ -237,6 +239,7 @@ const MoviePlayerWrapper: React.FC<MoviePlayerWrapperProps> = (props) => {
             <LemurVodPlayer
               tmdbId={props.mediaId}
               title={props.title}
+              origLang={props.origLang}
               poster={props.backdrop_path
                 ? `https://image.tmdb.org/t/p/w1280${props.backdrop_path}` : undefined}
               className="w-full h-full"

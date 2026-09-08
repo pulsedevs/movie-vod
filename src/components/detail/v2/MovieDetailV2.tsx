@@ -65,6 +65,7 @@ export default function MovieDetailV2({
             mediaType="movie"
             mediaId={movie.id.toString()}
             title={movie.title}
+            origLang={movie.original_language}
             poster_path={movie.poster_path}
             backdrop_path={movie.backdrop_path}
             trailerId={trailerId}

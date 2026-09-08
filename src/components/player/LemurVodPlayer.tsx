@@ -7,6 +7,8 @@ import Hls from 'hls.js';
 interface Props {
   tmdbId: number | string;
   title?: string;
+  /** Film's original language (TMDB ISO-639-1); the backend accepts original OR English audio. */
+  origLang?: string;
   poster?: string;
   className?: string;
 }
@@ -130,7 +132,7 @@ const CSS = `
  * auto-hiding controls, seek bar with buffer + hover time, ±10s, volume, speed, PiP, fullscreen,
  * keyboard shortcuts, and resume-where-you-left-off.
  */
-export default function LemurVodPlayer({ tmdbId, title, poster, className }: Props) {
+export default function LemurVodPlayer({ tmdbId, title, origLang, poster, className }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
@@ -178,6 +180,7 @@ export default function LemurVodPlayer({ tmdbId, title, poster, className }: Pro
         // specific copy the viewer chose from the version menu.
         const qs = new URLSearchParams({ lang: prefLang() });
         if (pickSid) qs.set('v', pickSid);
+        if (origLang) qs.set('orig', origLang);
         const r = await fetch(`/api/vod/play/movie/${tmdbId}?${qs}`, { cache: 'no-store' });
         const d = await r.json();
         if (!alive) return;
@@ -199,7 +202,7 @@ export default function LemurVodPlayer({ tmdbId, title, poster, className }: Pro
     };
     poll();
     return () => { alive = false; clearTimeout(timer); };
-  }, [tmdbId, pickSid]);
+  }, [tmdbId, pickSid, origLang]);
 
   // ── 2. Attach the stream. hls.js (MSE) FIRST — never trust canPlayType for HLS: Chromium on
   //       Windows answers "maybe" yet can't play an m3u8 natively. Native HLS only where there is

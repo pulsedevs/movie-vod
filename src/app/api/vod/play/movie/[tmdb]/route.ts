@@ -16,6 +16,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ tmdb: strin
   const v = sp.get("v"); const lang = sp.get("lang");
   if (v) qs.set("v", v);
   if (lang) qs.set("lang", lang.slice(0, 5).toLowerCase());
+  const orig = sp.get("orig");                      // film's TMDB original_language
+  if (orig) qs.set("orig", orig.slice(0, 5).toLowerCase());
   const q = qs.toString() ? `?${qs}` : "";
   try {
     const r = await fetch(`${BACKEND}/play/movie/${encodeURIComponent(tmdb)}${q}`, {

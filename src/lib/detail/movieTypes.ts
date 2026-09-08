@@ -1,6 +1,8 @@
 import type { Genre, Movie } from '@/types';
 
 export interface MovieWithCredits extends Movie {
+  /** TMDB original_language (ISO-639-1) — used to pick original-or-English audio. */
+  original_language?: string;
   credits?: {
     cast?: Array<{
       id: number;
