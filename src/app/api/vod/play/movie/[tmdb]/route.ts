@@ -8,10 +8,17 @@ export const dynamic = "force-dynamic";
 const BACKEND = process.env.LEMUR_BACKEND || process.env.NEXT_PUBLIC_LEMUR_BACKEND || "http://localhost:8000";
 const SECRET = process.env.LEMUR_INTERNAL_SECRET || "";
 
-export async function GET(_req: NextRequest, ctx: { params: Promise<{ tmdb: string }> }) {
+export async function GET(req: NextRequest, ctx: { params: Promise<{ tmdb: string }> }) {
   const { tmdb } = await ctx.params;
+  // v = a specific copy the viewer picked; lang = preferred audio language (en, fr, nl …).
+  const sp = req.nextUrl.searchParams;
+  const qs = new URLSearchParams();
+  const v = sp.get("v"); const lang = sp.get("lang");
+  if (v) qs.set("v", v);
+  if (lang) qs.set("lang", lang.slice(0, 5).toLowerCase());
+  const q = qs.toString() ? `?${qs}` : "";
   try {
-    const r = await fetch(`${BACKEND}/play/movie/${encodeURIComponent(tmdb)}`, {
+    const r = await fetch(`${BACKEND}/play/movie/${encodeURIComponent(tmdb)}${q}`, {
       headers: SECRET ? { "x-internal-secret": SECRET } : {},
       cache: "no-store",
     });

@@ -11,14 +11,27 @@ interface Props {
   className?: string;
 }
 
+/** One selectable copy of the film — audio language × quality — plus its packaging state. */
+export interface Version {
+  sid: string; lang: string; label: string; quality: string; name: string;
+  state: 'ready' | 'streaming' | 'packaging' | 'bad' | 'none'; reason?: string; current?: boolean;
+}
+
 type PlayState =
   | { s: 'loading' }
-  | { s: 'preparing' }
-  | { s: 'ready'; url: string }
-  | { s: 'unavailable' }
+  | { s: 'preparing'; versions?: Version[] }
+  | { s: 'ready'; url: string; sid?: string; versions?: Version[] }
+  | { s: 'unavailable'; versions?: Version[]; reason?: string }
   | { s: 'error'; msg: string };
 
 interface IOSVideo extends HTMLVideoElement { webkitEnterFullscreen?: () => void }
+
+const LANG_KEY = 'lp:lang';
+/** Preferred audio language: what the viewer last picked, else the browser's language. */
+const prefLang = (): string => {
+  try { const s = localStorage.getItem(LANG_KEY); if (s) return s; } catch { /* ignore */ }
+  try { return (navigator.language || 'en').slice(0, 2).toLowerCase(); } catch { return 'en'; }
+};
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const SKIP = 10;                       // seconds per ←/→ and the skip buttons
@@ -101,6 +114,11 @@ const CSS = `
 .lp-menu button:hover{background:rgba(255,255,255,.1)}
 .lp-menu button.on{color:var(--lp);font-weight:700}
 .lp-toast{position:absolute;top:16px;right:16px;background:rgba(0,0,0,.75);padding:8px 12px;border-radius:8px;font-size:13px;border:1px solid rgba(255,255,255,.1);pointer-events:none}
+.lp-vermenu{min-width:210px;max-height:260px;overflow:auto}
+.lp-menu button:disabled{opacity:.45;cursor:not-allowed}
+.lp-menu button:disabled:hover{background:none}
+.lp-ok{color:var(--lp);font-weight:700}
+.lp-verbtn{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
 .lp-wait{width:100%;aspect-ratio:16/9;background:#0b0d10;color:#eef1f5;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;text-align:center;padding:20px}
 @media (max-width:640px){.lp-time{font-size:12px}.lp-vol .lp-range{display:none}.lp-btn{width:36px;height:36px}.lp-big{width:68px;height:68px}}
 @media (prefers-reduced-motion:reduce){.lp-top,.lp-bottom,.lp-track,.lp-knob,.lp-big{transition:none}}
@@ -140,8 +158,13 @@ export default function LemurVodPlayer({ tmdbId, title, poster, className }: Pro
   const [speedOpen, setSpeedOpen] = useState(false);
   const [pipOk, setPipOk] = useState(false);
   const [resumed, setResumed] = useState<number | null>(null);
+  const [pickSid, setPickSid] = useState<string>('');  // viewer-picked copy (stream id); '' = by language
+  const [verOpen, setVerOpen] = useState(false);
+  const verOpenRef = useRef(false);
+  const switchPos = useRef<number | null>(null);        // keep the timeline position across a version switch
 
   useEffect(() => { uiRef.current = ui; }, [ui]);
+  useEffect(() => { verOpenRef.current = verOpen; }, [verOpen]);
   useEffect(() => { speedOpenRef.current = speedOpen; }, [speedOpen]);
   useEffect(() => { setPipOk(typeof document !== 'undefined' && !!document.pictureInPictureEnabled); }, []);
 
@@ -151,15 +174,21 @@ export default function LemurVodPlayer({ tmdbId, title, poster, className }: Pro
     let timer: ReturnType<typeof setTimeout>;
     const poll = async (attempt = 0) => {
       try {
-        const r = await fetch(`/api/vod/play/movie/${tmdbId}`, { cache: 'no-store' });
+        // lang = preferred audio language (viewer's last pick, else browser language); v = a
+        // specific copy the viewer chose from the version menu.
+        const qs = new URLSearchParams({ lang: prefLang() });
+        if (pickSid) qs.set('v', pickSid);
+        const r = await fetch(`/api/vod/play/movie/${tmdbId}?${qs}`, { cache: 'no-store' });
         const d = await r.json();
         if (!alive) return;
-        // 404 = not in the catalog; disabled = VOD switched off; unavailable = every copy the panel
-        // has is something a browser can't decode (HEVC/10-bit) — nothing to wait for.
-        if (r.status === 404 || d.status === 'disabled' || d.status === 'unavailable') { setState({ s: 'unavailable' }); return; }
-        if (d.status === 'ready' && d.url) { setState({ s: 'ready', url: d.url }); return; }
+        // 404 = not in the catalog; disabled = VOD switched off; unavailable = no copy in this
+        // language is browser-decodable (HEVC/10-bit) — offer the other versions instead.
+        if (r.status === 404 || d.status === 'disabled' || d.status === 'unavailable') {
+          setState({ s: 'unavailable', versions: d.versions, reason: d.reason }); return;
+        }
+        if (d.status === 'ready' && d.url) { setState({ s: 'ready', url: d.url, sid: d.sid, versions: d.versions }); return; }
         if (d.status === 'preparing') {
-          setState({ s: 'preparing' });
+          setState({ s: 'preparing', versions: d.versions });
           timer = setTimeout(() => poll(attempt + 1), Math.min(6000, 2000 + attempt * 500));
           return;
         }
@@ -170,7 +199,7 @@ export default function LemurVodPlayer({ tmdbId, title, poster, className }: Pro
     };
     poll();
     return () => { alive = false; clearTimeout(timer); };
-  }, [tmdbId]);
+  }, [tmdbId, pickSid]);
 
   // ── 2. Attach the stream. hls.js (MSE) FIRST — never trust canPlayType for HLS: Chromium on
   //       Windows answers "maybe" yet can't play an m3u8 natively. Native HLS only where there is
@@ -178,9 +207,10 @@ export default function LemurVodPlayer({ tmdbId, title, poster, className }: Pro
   useEffect(() => {
     if (state.s !== 'ready' || !videoRef.current) return;
     const video = videoRef.current;
-    const saved = readSaved(tmdbId);
+    const sw = switchPos.current; switchPos.current = null;      // a version switch keeps the position
+    const saved = sw != null ? sw : readSaved(tmdbId);
     const start = () => {
-      if (saved) { setResumed(saved); setTimeout(() => setResumed(null), 3500); }
+      if (saved && sw == null) { setResumed(saved); setTimeout(() => setResumed(null), 3500); }
       video.play().catch(() => { video.muted = true; setMuted(true); video.play().catch(() => {}); });
     };
 
@@ -258,7 +288,7 @@ export default function LemurVodPlayer({ tmdbId, title, poster, className }: Pro
     if (hideTimer.current) clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => {
       const v = videoRef.current;
-      if (v && !v.paused && !v.ended && !speedOpenRef.current && !scrubRef.current) setUi(false);
+      if (v && !v.paused && !v.ended && !speedOpenRef.current && !verOpenRef.current && !scrubRef.current) setUi(false);
     }, HIDE_AFTER);
   }, []);
   useEffect(() => { if (!playing) setUi(true); else wake(); }, [playing, wake]);
@@ -297,6 +327,34 @@ export default function LemurVodPlayer({ tmdbId, title, poster, className }: Pro
       else await v.requestPictureInPicture();
     } catch { /* not allowed / not supported */ }
   }, []);
+
+  // ── versions: the same film in other audio languages / qualities ──────────────────────────────
+  const chooseVersion = useCallback((ver: Version) => {
+    setVerOpen(false);
+    if (ver.current) return;
+    const vid = videoRef.current;
+    switchPos.current = vid && vid.currentTime > 5 ? vid.currentTime : null;   // carry the position over
+    try { if (ver.lang) localStorage.setItem(LANG_KEY, ver.lang); } catch { /* ignore */ }
+    setState({ s: 'loading' });
+    setPickSid(ver.sid);
+  }, []);
+  const versions: Version[] = (state.s === 'ready' || state.s === 'preparing' || state.s === 'unavailable') ? (state.versions || []) : [];
+  const currentVer = versions.find(x => x.current);
+  const verLabel = currentVer ? `${currentVer.label} · ${currentVer.quality}` : 'Version';
+  const renderVersionMenu = () => (
+    <div className="lp-menu lp-vermenu" role="menu">
+      {versions.map(ver => (
+        <button
+          type="button" key={ver.sid} role="menuitem" className={ver.current ? 'on' : ''}
+          disabled={ver.state === 'bad'} onClick={() => chooseVersion(ver)} title={ver.name}
+        >
+          <span>{ver.label}</span><span className="lp-dim"> · {ver.quality}</span>
+          {ver.state === 'ready' && <span className="lp-ok"> ✓</span>}
+          {ver.state === 'bad' && <span className="lp-dim"> · not playable</span>}
+        </button>
+      ))}
+    </div>
+  );
 
   // ── keyboard ──────────────────────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -361,7 +419,19 @@ export default function LemurVodPlayer({ tmdbId, title, poster, className }: Pro
         <style>{CSS}</style>
         <div className="lp-wait" style={poster ? { backgroundImage: `linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.75)),url(${poster})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
           {(state.s === 'loading' || state.s === 'preparing') && <div className="lp-spin" role="status" aria-label="Loading" />}
-          {state.s === 'unavailable' && <div style={{ opacity: 0.85 }}>Not available to stream yet.</div>}
+          {state.s === 'unavailable' && (
+            <div style={{ opacity: 0.9 }}>
+              {versions.length > 1 ? 'This version can’t play in a browser — pick another:' : 'Not available to stream yet.'}
+            </div>
+          )}
+          {(state.s === 'unavailable' || state.s === 'preparing') && versions.length > 1 && (
+            <div className="lp-speed" style={{ marginTop: 6 }}>
+              <button type="button" className="lp-btn lp-txt lp-verbtn" onClick={() => setVerOpen(o => !o)} aria-haspopup="menu" aria-expanded={verOpen}>
+                {verLabel} ▾
+              </button>
+              {verOpen && renderVersionMenu()}
+            </div>
+          )}
           {state.s === 'error' && <div style={{ color: '#f5a524' }}>⚠ {state.msg}</div>}
         </div>
       </div>
@@ -459,6 +529,17 @@ export default function LemurVodPlayer({ tmdbId, title, poster, className }: Pro
               </div>
             )}
           </div>
+          {versions.length > 1 && (
+            <div className="lp-speed">
+              <button
+                type="button" className="lp-btn lp-txt lp-verbtn" title="Audio language / quality"
+                onClick={() => { setVerOpen(o => !o); setSpeedOpen(false); }} aria-haspopup="menu" aria-expanded={verOpen}
+              >
+                {verLabel}
+              </button>
+              {verOpen && renderVersionMenu()}
+            </div>
+          )}
           {pipOk && <Btn onClick={togglePip} label="Picture in picture">{I.pip}</Btn>}
           <Btn onClick={toggleFs} label={fs ? 'Exit fullscreen (f)' : 'Fullscreen (f)'}>{fs ? I.fsExit : I.fs}</Btn>
         </div>
