@@ -28,6 +28,42 @@ type PlayState =
 
 interface IOSVideo extends HTMLVideoElement { webkitEnterFullscreen?: () => void }
 
+/** An audio or subtitle track inside the stream (switching one is instant — no reload). */
+interface Track { id: number; label: string; lang: string }
+/** Safari's native HLS exposes the stream's audio tracks here (not in the TS DOM lib). */
+interface NativeAudioTrack { enabled: boolean; label: string; language: string }
+type NativeAudioList = ArrayLike<NativeAudioTrack> & EventTarget;
+const nativeAudio = (v: HTMLVideoElement): NativeAudioList | null =>
+  (v as unknown as { audioTracks?: NativeAudioList }).audioTracks ?? null;
+const subTextTracks = (v: HTMLVideoElement): TextTrack[] =>
+  Array.from(v.textTracks).filter(t => t.kind === 'subtitles' || t.kind === 'captions');
+
+const AUDIO_KEY = 'lp:audio';          // audio language the viewer picked in the audio menu
+const SUBS_KEY = 'lp:subs';            // subtitle language the viewer picked, or 'off'
+const SUBS_LAST_KEY = 'lp:subs:last';  // the last subtitle language used ('c' turns it back on)
+const lang2 = (s?: string) => (s || '').toLowerCase().slice(0, 2);
+const readKey = (k: string) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } };
+const writeKey = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } };
+const langName = (code?: string) => {
+  if (!code || code === 'und') return '';
+  try { return new Intl.DisplayNames([navigator.language || 'en'], { type: 'language' }).of(code) || ''; } catch { return ''; }
+};
+/** Menu labels: the playlist's NAME (e.g. "Français"), "· 5.1" for surround, "(2)" on a repeat. */
+const toTracks = (src: { name?: string; lang?: string; ch?: string }[]): Track[] => {
+  const seen = new Map<string, number>();
+  return src.map((t, i) => {
+    let label = t.name || langName(t.lang) || `Track ${i + 1}`;
+    const ch = parseInt(t.ch || '', 10);
+    if (ch >= 8) label += ' · 7.1'; else if (ch >= 6) label += ' · 5.1';
+    const n = (seen.get(label) || 0) + 1; seen.set(label, n);
+    return { id: i, label: n > 1 ? `${label} (${n})` : label, lang: lang2(t.lang) };
+  });
+};
+/** A WebVTT cue as plain text: tags (<i>, <c.x>, <00:01.000>) dropped, entities decoded. */
+const cueText = (c: TextTrackCue) => ((c as VTTCue).text || '')
+  .replace(/<[^>]*>/g, '')
+  .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+
 const LANG_KEY = 'lp:lang';
 /** Preferred audio language: what the viewer last picked, else the browser's language. */
 const prefLang = (): string => {
@@ -69,11 +105,18 @@ const I = {
   fs: <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />,
   fsExit: <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />,
   pip: <path d="M19 11h-8v6h8v-6zm4 8V5c0-1.1-.9-2-2-2H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 0H3V5h18v14z" />,
+  audio: <path d="M12 3a9 9 0 0 0-9 9v7a2 2 0 0 0 2 2h2v-8H5v-1a7 7 0 0 1 14 0v1h-2v8h2a2 2 0 0 0 2-2v-7a9 9 0 0 0-9-9z" />,
+  subs: <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 12h4v2H4v-2zm10 6H4v-2h10v2zm6 0h-4v-2h4v2zm0-4H10v-2h10v2z" />,
 };
 
-function Btn({ onClick, label, children }: { onClick: () => void; label: string; children: ReactNode }) {
+function Btn({ onClick, label, children, active, expanded }: {
+  onClick: () => void; label: string; children: ReactNode; active?: boolean; expanded?: boolean;
+}) {
   return (
-    <button type="button" className="lp-btn" onClick={onClick} aria-label={label} title={label}>
+    <button
+      type="button" className={`lp-btn${active ? ' on' : ''}`} onClick={onClick} aria-label={label} title={label}
+      aria-haspopup={expanded === undefined ? undefined : 'menu'} aria-expanded={expanded}
+    >
       <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">{children}</svg>
     </button>
   );
@@ -122,6 +165,12 @@ const CSS = `
 .lp-menu button:disabled:hover{background:none}
 .lp-ok{color:var(--lp);font-weight:700}
 .lp-verbtn{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.lp-btn.on{color:var(--lp)}
+.lp-trkmenu{min-width:170px;max-height:260px;overflow:auto}
+.lp-menu .lp-mhead{font-size:11px;text-transform:uppercase;letter-spacing:.6px;opacity:.55;padding:6px 10px 4px}
+.lp-cues{position:absolute;left:0;right:0;bottom:7%;display:flex;justify-content:center;padding:0 6%;pointer-events:none;transition:bottom .25s}
+.lp-cues.up{bottom:104px}
+.lp-cues span{background:rgba(0,0,0,.72);color:#fff;font-size:clamp(15px,2.3vw,34px);line-height:1.35;padding:.12em .5em;border-radius:4px;text-align:center;white-space:pre-line;text-shadow:0 1px 2px #000}
 .lp-wait{width:100%;aspect-ratio:16/9;background:#0b0d10;color:#eef1f5;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;text-align:center;padding:20px}
 @media (max-width:640px){.lp-time{font-size:12px}.lp-vol .lp-range{display:none}.lp-btn{width:36px;height:36px}.lp-big{width:68px;height:68px}}
 @media (prefers-reduced-motion:reduce){.lp-top,.lp-bottom,.lp-track,.lp-knob,.lp-big{transition:none}}
@@ -167,8 +216,18 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
   const [verOpen, setVerOpen] = useState(false);
   const verOpenRef = useRef(false);
   const switchPos = useRef<number | null>(null);        // keep the timeline position across a version switch
+  // Audio / subtitle tracks INSIDE the current stream (hls.js, or Safari's native HLS).
+  const hlsRef = useRef<Hls | null>(null);
+  const [audioTracks, setAudioTracks] = useState<Track[]>([]);
+  const [audioSel, setAudioSel] = useState(-1);
+  const [subTracks, setSubTracks] = useState<Track[]>([]);
+  const [subSel, setSubSel] = useState(-1);               // -1 = subtitles off
+  const [cue, setCue] = useState('');                     // subtitle text on screen now
+  const [trackMenu, setTrackMenu] = useState<'' | 'audio' | 'subs'>('');
+  const trackMenuRef = useRef<'' | 'audio' | 'subs'>('');
 
   useEffect(() => { uiRef.current = ui; }, [ui]);
+  useEffect(() => { trackMenuRef.current = trackMenu; }, [trackMenu]);
   useEffect(() => { verOpenRef.current = verOpen; }, [verOpen]);
   useEffect(() => { speedOpenRef.current = speedOpen; }, [speedOpen]);
   useEffect(() => { setPipOk(typeof document !== 'undefined' && !!document.pictureInPictureEnabled); }, []);
@@ -226,11 +285,34 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
       const hls = new Hls({
         enableWorker: true, lowLatencyMode: false, maxBufferLength: 30, backBufferLength: 60,
         startPosition: saved || -1,          // resume where they left off, else from the top
+        enableCEA708Captions: false,         // only the stream's own subtitle tracks, drawn by us
       });
+      hlsRef.current = hls;
+      // Subtitles are drawn by the player (above the controls), not by the browser: hls.js keeps the
+      // chosen track's cues coming with the text track 'hidden', and we render its active cues.
+      hls.subtitleDisplay = false;
       let recovered = false;
       hls.loadSource(state.url);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, start);
+      hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, () => {
+        setAudioTracks(toTracks(hls.audioTracks.map(t => ({ name: t.name, lang: t.lang, ch: t.attrs?.CHANNELS }))));
+        const want = readKey(AUDIO_KEY);                // the language the viewer picked last time
+        const i = want ? hls.audioTracks.findIndex(t => lang2(t.lang) === want) : -1;
+        if (i >= 0 && i !== hls.audioTrack) hls.audioTrack = i;
+        setAudioSel(hls.audioTrack);
+      });
+      hls.on(Hls.Events.AUDIO_TRACK_SWITCHING, (_e, d) => setAudioSel(d.id));
+      hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, (_e, d) => setAudioSel(d.id));
+      hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => {
+        setSubTracks(toTracks(hls.subtitleTracks.map(t => ({ name: t.name, lang: t.lang }))));
+        // Off unless the viewer turned subtitles on in this language before.
+        const want = readKey(SUBS_KEY);
+        const i = want && want !== 'off' ? hls.subtitleTracks.findIndex(t => lang2(t.lang) === want) : -1;
+        hls.subtitleTrack = i;
+        setSubSel(i);
+      });
+      hls.on(Hls.Events.SUBTITLE_TRACK_SWITCH, (_e, d) => setSubSel(d.id));
       hls.on(Hls.Events.ERROR, (_e, data) => {
         if (!data.fatal) return;
         // Playlist vanished (e.g. the R2 cache was wiped after the backend cached it as ready):
@@ -244,13 +326,48 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
         hls.destroy();
         setState({ s: 'error', msg: `playback error (${data.type})` });
       });
-      return () => hls.destroy();
+      return () => {
+        hls.destroy(); hlsRef.current = null;
+        setAudioTracks([]); setSubTracks([]); setAudioSel(-1); setSubSel(-1); setCue('');
+      };
     }
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari's own HLS: the stream's tracks show up as video.audioTracks / video.textTracks.
       video.src = state.url;
-      const onMeta = () => { if (saved) video.currentTime = saved; start(); };
+      const al = nativeAudio(video);
+      const syncAudio = () => {
+        if (!al) return;
+        const arr = Array.from({ length: al.length }, (_, i) => al[i]);
+        setAudioTracks(toTracks(arr.map(t => ({ name: t.label, lang: t.language }))));
+        setAudioSel(arr.findIndex(t => t.enabled));
+      };
+      const syncSubs = () => {
+        const arr = subTextTracks(video);
+        setSubTracks(toTracks(arr.map(t => ({ name: t.label, lang: t.language }))));
+        const want = readKey(SUBS_KEY);
+        const pick = want && want !== 'off' ? arr.findIndex(t => lang2(t.language) === want) : -1;
+        arr.forEach((t, j) => { t.mode = j === pick ? 'hidden' : 'disabled'; });   // we draw the cues
+        setSubSel(pick);
+      };
+      const onMeta = () => {
+        if (saved) video.currentTime = saved;
+        const want = readKey(AUDIO_KEY);
+        if (al && want) {
+          const arr = Array.from({ length: al.length }, (_, i) => al[i]);
+          const i = arr.findIndex(t => lang2(t.language) === want);
+          if (i >= 0) arr.forEach((t, j) => { t.enabled = j === i; });
+        }
+        syncAudio(); syncSubs(); start();
+      };
       video.addEventListener('loadedmetadata', onMeta, { once: true });
-      return () => video.removeEventListener('loadedmetadata', onMeta);
+      al?.addEventListener('change', syncAudio);
+      video.textTracks.addEventListener('addtrack', syncSubs);
+      return () => {
+        video.removeEventListener('loadedmetadata', onMeta);
+        al?.removeEventListener('change', syncAudio);
+        video.textTracks.removeEventListener('addtrack', syncSubs);
+        setAudioTracks([]); setSubTracks([]); setAudioSel(-1); setSubSel(-1); setCue('');
+      };
     }
     setState({ s: 'error', msg: 'HLS not supported in this browser' });
   }, [state, tmdbId]);
@@ -295,13 +412,43 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
     return () => { pairs.forEach(([e, f]) => v.removeEventListener(e, f)); document.removeEventListener('fullscreenchange', onFs); };
   }, [state.s, tmdbId]);
 
+  // ── 4. Subtitles on screen: the chosen text track is 'hidden' (cues load, the browser draws
+  //       nothing); its active cues become our caption line, which moves up over the controls. ─────
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || state.s !== 'ready') return;
+    const tl = v.textTracks;
+    let bound: TextTrack | null = null;
+    const onCue = () => {
+      const cues = bound?.activeCues;
+      setCue(cues && cues.length ? Array.from(cues).map(cueText).filter(Boolean).join('\n') : '');
+    };
+    const bind = () => {
+      const t = subSel >= 0 ? subTextTracks(v).find(x => x.mode === 'hidden') || null : null;
+      if (t === bound) return;
+      bound?.removeEventListener('cuechange', onCue);
+      bound = t;
+      bound?.addEventListener('cuechange', onCue);
+      onCue();
+    };
+    bind();
+    tl.addEventListener('change', bind);
+    tl.addEventListener('addtrack', bind);
+    return () => {
+      bound?.removeEventListener('cuechange', onCue);
+      tl.removeEventListener('change', bind);
+      tl.removeEventListener('addtrack', bind);
+      setCue('');
+    };
+  }, [state.s, subSel]);
+
   // ── controls visibility ───────────────────────────────────────────────────────────────────────
   const wake = useCallback(() => {
     setUi(true);
     if (hideTimer.current) clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => {
       const v = videoRef.current;
-      if (v && !v.paused && !v.ended && !speedOpenRef.current && !verOpenRef.current && !scrubRef.current) setUi(false);
+      if (v && !v.paused && !v.ended && !speedOpenRef.current && !verOpenRef.current && !trackMenuRef.current && !scrubRef.current) setUi(false);
     }, HIDE_AFTER);
   }, []);
   useEffect(() => { if (!playing) setUi(true); else wake(); }, [playing, wake]);
@@ -340,6 +487,63 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
       else await v.requestPictureInPicture();
     } catch { /* not allowed / not supported */ }
   }, []);
+
+  // ── audio / subtitle tracks of the current stream (instant, no reload) ────────────────────────
+  const chooseAudio = useCallback((t: Track) => {
+    setTrackMenu('');
+    if (t.lang) writeKey(AUDIO_KEY, t.lang);
+    const hls = hlsRef.current; const v = videoRef.current;
+    // Marked at once: hls.js only reports SWITCHED after the new track's first segment is buffered.
+    if (hls) { hls.audioTrack = t.id; setAudioSel(t.id); return; }
+    const al = v ? nativeAudio(v) : null;
+    if (al) { for (let j = 0; j < al.length; j++) al[j].enabled = j === t.id; setAudioSel(t.id); }
+  }, []);
+  const chooseSub = useCallback((id: number) => {   // -1 = off
+    setTrackMenu('');
+    const t = subTracks.find(x => x.id === id);
+    writeKey(SUBS_KEY, id < 0 ? 'off' : (t?.lang || 'off'));
+    if (t?.lang) writeKey(SUBS_LAST_KEY, t.lang);
+    const hls = hlsRef.current; const v = videoRef.current;
+    if (hls) { hls.subtitleTrack = id; setSubSel(id); return; }
+    if (v) subTextTracks(v).forEach((x, j) => { x.mode = j === id ? 'hidden' : 'disabled'; });
+    setSubSel(id);
+  }, [subTracks]);
+  const toggleSubs = useCallback(() => {           // 'c': off <-> the remembered language (else the first)
+    if (!subTracks.length) return;
+    if (subSel >= 0) { chooseSub(-1); return; }
+    const want = readKey(SUBS_LAST_KEY);
+    const t = subTracks.find(x => x.lang === want) || subTracks[0];
+    chooseSub(t.id);
+  }, [subTracks, subSel, chooseSub]);
+  const openTrackMenu = (m: 'audio' | 'subs') => {
+    setTrackMenu(cur => (cur === m ? '' : m)); setSpeedOpen(false); setVerOpen(false); wake();
+  };
+  const renderTrackMenu = () => (
+    <div className="lp-menu lp-trkmenu" role="menu">
+      {trackMenu === 'audio' && <>
+        <div className="lp-mhead">Audio</div>
+        {audioTracks.map(t => (
+          <button type="button" key={t.id} role="menuitemradio" aria-checked={t.id === audioSel}
+            className={t.id === audioSel ? 'on' : ''} onClick={() => chooseAudio(t)}>
+            {t.label}{t.id === audioSel && <span className="lp-ok"> ✓</span>}
+          </button>
+        ))}
+      </>}
+      {trackMenu === 'subs' && <>
+        <div className="lp-mhead">Subtitles</div>
+        <button type="button" role="menuitemradio" aria-checked={subSel < 0}
+          className={subSel < 0 ? 'on' : ''} onClick={() => chooseSub(-1)}>
+          Off{subSel < 0 && <span className="lp-ok"> ✓</span>}
+        </button>
+        {subTracks.map(t => (
+          <button type="button" key={t.id} role="menuitemradio" aria-checked={t.id === subSel}
+            className={t.id === subSel ? 'on' : ''} onClick={() => chooseSub(t.id)}>
+            {t.label}{t.id === subSel && <span className="lp-ok"> ✓</span>}
+          </button>
+        ))}
+      </>}
+    </div>
+  );
 
   // ── versions: the same film in other audio languages / qualities ──────────────────────────────
   const chooseVersion = useCallback((ver: Version) => {
@@ -385,14 +589,15 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
         case 'ArrowDown': e.preventDefault(); setVolume((v?.volume ?? 1) - 0.1); break;
         case 'm': toggleMute(); break;
         case 'f': toggleFs(); break;
-        case 'Escape': setSpeedOpen(false); return;
+        case 'c': toggleSubs(); break;
+        case 'Escape': setSpeedOpen(false); setVerOpen(false); setTrackMenu(''); return;
         default: return;
       }
       wake();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [state.s, toggle, seekBy, setVolume, toggleMute, toggleFs, wake]);
+  }, [state.s, toggle, seekBy, setVolume, toggleMute, toggleFs, toggleSubs, wake]);
 
   // ── seek bar ──────────────────────────────────────────────────────────────────────────────────
   const frac = (e: RPointerEvent<HTMLDivElement>) => {
@@ -495,6 +700,8 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
         </div>
       )}
 
+      {cue && <div className={`lp-cues ${showUi ? 'up' : ''}`} aria-live="off"><span>{cue}</span></div>}
+
       {resumed != null && <div className="lp-toast">Resumed from {fmt(resumed)}</div>}
 
       <div className={`lp-top ${showUi ? 'lp-show' : ''}`}>
@@ -533,8 +740,20 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
           </div>
           <div className="lp-time">{fmt(cur)} <span className="lp-dim">/ {fmt(full)}</span></div>
           <div className="lp-spacer" />
+          {audioTracks.length > 1 && (
+            <div className="lp-speed">
+              <Btn onClick={() => openTrackMenu('audio')} label="Audio" expanded={trackMenu === 'audio'}>{I.audio}</Btn>
+              {trackMenu === 'audio' && renderTrackMenu()}
+            </div>
+          )}
+          {subTracks.length > 0 && (
+            <div className="lp-speed">
+              <Btn onClick={() => openTrackMenu('subs')} label="Subtitles (c)" active={subSel >= 0} expanded={trackMenu === 'subs'}>{I.subs}</Btn>
+              {trackMenu === 'subs' && renderTrackMenu()}
+            </div>
+          )}
           <div className="lp-speed">
-            <button type="button" className="lp-btn lp-txt" onClick={() => setSpeedOpen(o => !o)} aria-haspopup="menu" aria-expanded={speedOpen} title="Playback speed">
+            <button type="button" className="lp-btn lp-txt" onClick={() => { setSpeedOpen(o => !o); setVerOpen(false); setTrackMenu(''); }} aria-haspopup="menu" aria-expanded={speedOpen} title="Playback speed">
               {speed}×
             </button>
             {speedOpen && (
@@ -554,7 +773,7 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
             <div className="lp-speed">
               <button
                 type="button" className="lp-btn lp-txt lp-verbtn" title="Audio language / quality"
-                onClick={() => { setVerOpen(o => !o); setSpeedOpen(false); }} aria-haspopup="menu" aria-expanded={verOpen}
+                onClick={() => { setVerOpen(o => !o); setSpeedOpen(false); setTrackMenu(''); }} aria-haspopup="menu" aria-expanded={verOpen}
               >
                 {verLabel}
               </button>
