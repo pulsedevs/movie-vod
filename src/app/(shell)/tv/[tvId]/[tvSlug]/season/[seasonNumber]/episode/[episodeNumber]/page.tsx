@@ -102,7 +102,9 @@ export default async function EpisodePage({ params }: Props) {
 
   // Same slug normalisation the show page does, so one episode has exactly one URL.
   const canonicalSlug = createSlug(show.name);
-  if (tvSlug !== canonicalSlug) {
+  // 'untitled' = a placeholder link (a saved item with no name): render it, the canonical tag
+  // names the real URL. Redirecting it streamed a client-side redirect that crashed the router.
+  if (tvSlug !== canonicalSlug && tvSlug !== 'untitled') {
     redirect(episodePath(tvId, canonicalSlug, episode.season_number, episode.episode_number));
   }
 

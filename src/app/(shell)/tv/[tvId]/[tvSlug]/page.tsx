@@ -189,7 +189,9 @@ export default async function TvShowDetailPage({ params, searchParams }: TvShowD
   if (!show) notFound();
 
   const canonicalSlug = createSlug(show.name);
-  if (tvSlug !== canonicalSlug) {
+  // 'untitled' = a placeholder link (a saved item with no name): render it, the canonical tag
+  // names the real URL. Redirecting it streamed a client-side redirect that crashed the router.
+  if (tvSlug !== canonicalSlug && tvSlug !== 'untitled') {
     redirect(`/tv/${tvId}/${canonicalSlug}`);
   }
 

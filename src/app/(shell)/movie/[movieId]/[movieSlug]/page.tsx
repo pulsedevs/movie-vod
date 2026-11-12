@@ -198,7 +198,9 @@ export default async function MovieDetailPage({ params, searchParams }: MovieDet
   }
 
   const canonicalSlug = createSlug(movie.title);
-  if (movieSlug !== canonicalSlug) {
+  // 'untitled' = a placeholder link (a saved item with no name): render it, the canonical tag
+  // names the real URL. Redirecting it streamed a client-side redirect that crashed the router.
+  if (movieSlug !== canonicalSlug && movieSlug !== 'untitled') {
     redirect(`/movie/${movieId}/${canonicalSlug}`);
   }
 

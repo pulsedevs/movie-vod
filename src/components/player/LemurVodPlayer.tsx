@@ -5,12 +5,18 @@ import type { PointerEvent as RPointerEvent, ReactNode } from 'react';
 import Hls from 'hls.js';
 
 interface Props {
+  /** TMDB id of the film, or of the show when `season` + `episode` are given. */
   tmdbId: number | string;
   title?: string;
   /** Film's original language (TMDB ISO-639-1); the backend accepts original OR English audio. */
   origLang?: string;
   poster?: string;
   className?: string;
+  /** TV: play this episode of the show `tmdbId` (TMDB numbering). */
+  season?: number;
+  episode?: number;
+  /** TV: the panel has no such show/episode (backend 404) — the caller shows its other sources. */
+  onMissing?: () => void;
 }
 
 /** One selectable copy of the film — audio language × quality — plus its packaging state. */
@@ -74,7 +80,8 @@ const prefLang = (): string => {
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const SKIP = 10;                       // seconds per ←/→ and the skip buttons
 const HIDE_AFTER = 2600;               // ms of stillness before controls fade (while playing)
-const posKey = (id: number | string) => `lp:pos:movie:${id}`;
+/** `movie:{tmdb}` or `tv:{tmdb}:{season}:{episode}` — where "resume where you left off" is kept. */
+const posKey = (id: string) => `lp:pos:${id}`;
 
 const fmt = (t: number) => {
   if (!isFinite(t) || t < 0) t = 0;
@@ -83,7 +90,7 @@ const fmt = (t: number) => {
 };
 
 // Remembered position for "resume where you left off" (ignored for the first 30s / last minute).
-const readSaved = (id: number | string): number => {
+const readSaved = (id: string): number => {
   try { const n = parseFloat(localStorage.getItem(posKey(id)) || '0'); return isFinite(n) && n > 30 ? n : 0; } catch { return 0; }
 };
 
@@ -182,7 +189,11 @@ const CSS = `
  * auto-hiding controls, seek bar with buffer + hover time, ±10s, volume, speed, PiP, fullscreen,
  * keyboard shortcuts, and resume-where-you-left-off.
  */
-export default function LemurVodPlayer({ tmdbId, title, origLang, poster, className }: Props) {
+export default function LemurVodPlayer({ tmdbId, title, origLang, poster, className, season, episode, onMissing }: Props) {
+  const isTv = season != null && episode != null;
+  const posId = isTv ? `tv:${tmdbId}:${season}:${episode}` : `movie:${tmdbId}`;
+  const onMissingRef = useRef(onMissing);
+  useEffect(() => { onMissingRef.current = onMissing; }, [onMissing]);
   const rootRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
@@ -243,9 +254,12 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
         const qs = new URLSearchParams({ lang: prefLang() });
         if (pickSid) qs.set('v', pickSid);
         if (origLang) qs.set('orig', origLang);
-        const r = await fetch(`/api/vod/play/movie/${tmdbId}?${qs}`, { cache: 'no-store' });
+        const path = isTv ? `tv/${tmdbId}/${season}/${episode}` : `movie/${tmdbId}`;
+        const r = await fetch(`/api/vod/play/${path}?${qs}`, { cache: 'no-store' });
         const d = await r.json();
         if (!alive) return;
+        // TV: the panel doesn't have this show/episode — let the page fall back to its other sources.
+        if (isTv && r.status === 404) { onMissingRef.current?.(); setState({ s: 'unavailable' }); return; }
         // 404 = not in the catalog; disabled = VOD switched off; unavailable = no copy in this
         // language is browser-decodable (HEVC/10-bit) — offer the other versions instead.
         if (r.status === 404 || d.status === 'disabled' || d.status === 'unavailable') {
@@ -266,7 +280,7 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
     };
     poll();
     return () => { alive = false; clearTimeout(timer); };
-  }, [tmdbId, pickSid, origLang, repoll]);
+  }, [tmdbId, isTv, season, episode, pickSid, origLang, repoll]);
 
   // ── 2. Attach the stream. hls.js (MSE) FIRST — never trust canPlayType for HLS: Chromium on
   //       Windows answers "maybe" yet can't play an m3u8 natively. Native HLS only where there is
@@ -275,7 +289,7 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
     if (state.s !== 'ready' || !videoRef.current) return;
     const video = videoRef.current;
     const sw = switchPos.current; switchPos.current = null;      // a version switch keeps the position
-    const saved = sw != null ? sw : readSaved(tmdbId);
+    const saved = sw != null ? sw : readSaved(posId);
     const start = () => {
       if (saved && sw == null) { setResumed(saved); setTimeout(() => setResumed(null), 3500); }
       video.play().catch(() => { video.muted = true; setMuted(true); video.play().catch(() => {}); });
@@ -370,7 +384,7 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
       };
     }
     setState({ s: 'error', msg: 'HLS not supported in this browser' });
-  }, [state, tmdbId]);
+  }, [state, posId]);
 
   // ── 3. Mirror <video> state into the UI ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -387,7 +401,7 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
       const now = Date.now();
       if (now - lastSave.current > 5000 && v.currentTime > 5) {
         lastSave.current = now;
-        try { localStorage.setItem(posKey(tmdbId), String(v.currentTime)); } catch { /* private mode */ }
+        try { localStorage.setItem(posKey(posId), String(v.currentTime)); } catch { /* private mode */ }
       }
     };
     const onDur = () => setDur(v.duration);
@@ -399,7 +413,7 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
     const onRate = () => setSpeed(v.playbackRate);
     const onEnd = () => {
       setEnded(true); setPlaying(false);
-      try { localStorage.removeItem(posKey(tmdbId)); } catch { /* ignore */ }
+      try { localStorage.removeItem(posKey(posId)); } catch { /* ignore */ }
     };
     const pairs: [string, EventListener][] = [
       ['timeupdate', onTime], ['progress', updBuf], ['durationchange', onDur], ['loadedmetadata', onDur],
@@ -410,7 +424,7 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
     const onFs = () => setFs(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', onFs);
     return () => { pairs.forEach(([e, f]) => v.removeEventListener(e, f)); document.removeEventListener('fullscreenchange', onFs); };
-  }, [state.s, tmdbId]);
+  }, [state.s, posId]);
 
   // ── 4. Subtitles on screen: the chosen text track is 'hidden' (cues load, the browser draws
   //       nothing); its active cues become our caption line, which moves up over the controls. ─────

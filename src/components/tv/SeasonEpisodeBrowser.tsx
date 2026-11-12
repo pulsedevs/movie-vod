@@ -27,6 +27,7 @@ import WatchPartyButton from '@/components/watchParty/WatchPartyButton';
 import Image from 'next/image';
 import { TMDB_IMAGE_BASE_URL } from '@/utils/constants';
 import MoviePlayer from '@/components/player/MoviePlayer';
+import LemurVodPlayer from '@/components/player/LemurVodPlayer';
 import { getTvSourceIndex } from '@/utils/sourceOverride';
 import useRemoteSourceOverrides from '@/hooks/useRemoteSourceOverrides';
 import { writeContinueWatching } from '@/utils/libraryStorage';
@@ -94,6 +95,9 @@ const SeasonEpisodeBrowser: React.FC<SeasonEpisodeBrowserProps> = ({
   /** Shell player keeps last episode mounted while a new season's episodes load */
   const [playerSeason, setPlayerSeason] = useState<number | null>(initialSeasonNumber ?? null);
   const [playerEpisode, setPlayerEpisode] = useState<number | null>(initialEpisodeNumber ?? null);
+  // Episodes play from our own VOD backend; the legacy external sources only take over for an
+  // episode the panel doesn't have (the backend answers 404 → this holds that episode's key).
+  const [vodMissingKey, setVodMissingKey] = useState('');
   const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(false);
   const [seasonData, setSeasonData] = useState<TvSeasonDetailsResponse | null>(null);
   const [isSeasonDropdownOpen, setIsSeasonDropdownOpen] = useState(false);
@@ -609,6 +613,20 @@ const SeasonEpisodeBrowser: React.FC<SeasonEpisodeBrowserProps> = ({
   const activePlayerSeason = inShell ? playerSeason : selectedSeasonNumber;
   const activePlayerEpisode = inShell ? playerEpisode : selectedEpisodeNumber;
 
+  const vodKey = `${tvId}:${activePlayerSeason}:${activePlayerEpisode}`;
+  const useLegacyPlayer = vodMissingKey === vodKey;
+  const vodPlayer = (
+    <LemurVodPlayer
+      key={vodKey}
+      tmdbId={tvId}
+      season={activePlayerSeason ?? undefined}
+      episode={activePlayerEpisode ?? undefined}
+      title={showTitle ? `${showTitle} · S${activePlayerSeason}E${activePlayerEpisode}` : undefined}
+      onMissing={() => setVodMissingKey(vodKey)}
+      className="w-full h-full"
+    />
+  );
+
   const panelSeasonEpisodes = (
     <DetailPanelSeasonEpisodes
       validSeasons={validSeasons}
@@ -635,7 +653,10 @@ const SeasonEpisodeBrowser: React.FC<SeasonEpisodeBrowserProps> = ({
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent -translate-x-full animate-[shimmer_1.6s_ease-in-out_infinite]" />
               </div>
             )}
-            {canRenderPlayer && (
+            {canRenderPlayer && !useLegacyPlayer && (
+              <div className="absolute inset-0 bg-black">{vodPlayer}</div>
+            )}
+            {canRenderPlayer && useLegacyPlayer && (
               <div className="absolute inset-0">
                 <MoviePlayer
                   sources={sources}
@@ -671,6 +692,10 @@ const SeasonEpisodeBrowser: React.FC<SeasonEpisodeBrowserProps> = ({
                 </div>
               </div>
             </div>
+          </div>
+        ) : canRenderPlayer && !useLegacyPlayer ? (
+          <div className={`relative bg-black ${PLAYER_ASPECT_SHELL_CLASS}`}>
+            <div className="absolute inset-0">{vodPlayer}</div>
           </div>
         ) : canRenderPlayer ? (
           <MoviePlayer
@@ -727,8 +752,8 @@ const SeasonEpisodeBrowser: React.FC<SeasonEpisodeBrowserProps> = ({
 
           return (
             <div className="flex items-center gap-3 w-[80%] mx-auto">
-              {/* Servers dropdown */}
-              {sources.length > 0 && (
+              {/* Servers dropdown — only for the legacy external player */}
+              {sources.length > 0 && useLegacyPlayer && (
                 <div className="relative flex-1 min-w-0">
                   <button
                     type="button"
