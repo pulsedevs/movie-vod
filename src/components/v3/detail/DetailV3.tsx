@@ -4,7 +4,8 @@ import type { MovieWithCredits } from '@/lib/detail/movieTypes';
 import type { TvShowWithCredits } from '@/lib/detail/tvTypes';
 import { getMediaLogo, getSimilarMovies, getSimilarTvShows } from '@/services/api';
 import MovieDetailV2 from '@/components/detail/v2/MovieDetailV2';
-import TvDetailV2 from '@/components/detail/v2/TvDetailV2';
+import TvWatchV3 from './TvWatchV3';
+import { loadSeasonDetail } from '@/lib/detail/loadEpisodeDetail';
 import DetailV2Faq from '@/components/detail/v2/DetailV2Faq';
 import { buildFaqItems } from '@/utils/seoFaq';
 import { movieFaqInput, tvFaqInput } from '@/lib/detail/faqInput';
@@ -128,9 +129,17 @@ interface TvDetailV3Props {
 export async function TvDetailV3(props: TvDetailV3Props) {
   const { show, firstAirYear, trailerId, episodeLinks, asSubheading } = props;
   const x = show as TvShowWithCredits & Extra;
-  const [logo, similar] = await Promise.all([
+  // The season the episodes section opens on: the episode page's, else the first real one.
+  const openSeason =
+    props.initialSeasonNumber ??
+    (show.seasons ?? [])
+      .filter((s) => s.season_number > 0 && s.episode_count > 0)
+      .sort((a, b) => a.season_number - b.season_number)[0]?.season_number ??
+    show.seasons?.[0]?.season_number;
+  const [logo, similar, openSeasonData] = await Promise.all([
     getMediaLogo('tv', show.id).catch(() => null),
     getSimilarTvShows(show.id).catch(() => []),
+    openSeason != null ? loadSeasonDetail(show.id, openSeason).catch(() => null) : Promise.resolve(null),
   ]);
 
   const cert = x.content_ratings?.results?.find((r) => r.iso_3166_1 === 'US')?.rating || null;
@@ -148,33 +157,41 @@ export async function TvDetailV3(props: TvDetailV3Props) {
 
   return (
     <div className="text-white">
-      <DetailHeroV3
-        kind="tv"
-        item={{ ...show, media_type: 'tv' } as MediaItem}
-        title={show.name}
-        headingLevel={asSubheading ? 'h2' : 'h1'}
-        logoPath={logo}
+      <TvWatchV3
+        hero={{
+          kind: 'tv',
+          item: { ...show, media_type: 'tv' } as MediaItem,
+          title: show.name,
+          headingLevel: asSubheading ? 'h2' : 'h1',
+          logoPath: logo,
+          backdropPath: show.backdrop_path ?? null,
+          genres: ((show as { genres?: Array<{ name: string }> }).genres ?? []).slice(0, 3).map((g) => g.name),
+          facts: [
+            firstAirYear !== 'N/A' ? firstAirYear : '',
+            seasons ? `${seasons} Season${seasons > 1 ? 's' : ''}` : '',
+            fmtRuntime(runtime) ? `${fmtRuntime(runtime)} / ep` : '',
+          ].filter(Boolean),
+          certification: cert,
+          rating: show.vote_average,
+          credits: creators.length ? { label: 'Created by', names: creators } : null,
+          overview: show.overview,
+          info,
+          companies: x.networks ?? x.production_companies ?? [],
+          trailerKey: trailerId,
+        }}
+        tvId={show.id}
+        showName={show.name}
+        posterPath={show.poster_path ?? null}
         backdropPath={show.backdrop_path ?? null}
-        genres={((show as { genres?: Array<{ name: string }> }).genres ?? []).slice(0, 3).map((g) => g.name)}
-        facts={[
-          firstAirYear !== 'N/A' ? firstAirYear : '',
-          seasons ? `${seasons} Season${seasons > 1 ? 's' : ''}` : '',
-          fmtRuntime(runtime) ? `${fmtRuntime(runtime)} / ep` : '',
-        ].filter(Boolean)}
-        certification={cert}
-        rating={show.vote_average}
-        credits={creators.length ? { label: 'Created by', names: creators } : null}
-        overview={show.overview}
-        info={info}
-        companies={x.networks ?? x.production_companies ?? []}
-        trailerKey={trailerId}
-        playTargetId="v3-episodes"
+        seasons={show.seasons ?? []}
+        sources={props.sources}
+        trailerId={trailerId}
+        voteCount={show.vote_count}
+        initialSourceIndex={props.initialSourceIndex}
+        initialSeasonNumber={props.initialSeasonNumber}
+        initialEpisodeNumber={props.initialEpisodeNumber}
+        initialSeasonData={openSeason != null && openSeasonData ? { season: openSeason, data: openSeasonData } : null}
       />
-
-      <section id="v3-episodes" className="v3-gutter scroll-mt-24 py-6">
-        <h2 className="mb-4 text-lg font-semibold tracking-tight md:text-[22px]">Episodes</h2>
-        <TvDetailV2 {...props} inShell={false} playerOnly />
-      </section>
 
       <CastCircles cast={cast} />
       <TrailersRow videos={trailers(x)} title={show.name} />

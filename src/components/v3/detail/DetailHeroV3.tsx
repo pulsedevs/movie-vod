@@ -39,9 +39,20 @@ interface DetailHeroV3Props {
   runtimeMin?: number | null;
   companies: Array<{ name: string; logo_path?: string | null }>;
   trailerKey?: string | null;
-  /** Movie: the player replaces the hero on Play. TV: Play scrolls to the episodes section. */
+  /** The player that replaces the hero on Play. */
   player?: React.ReactNode;
-  playTargetId?: string;
+  /** Controlled mode (TV: the page picks the episode): whether the player is showing ... */
+  playing?: boolean;
+  /** ... what Play does (pick an episode, then set playing) ... */
+  onPlay?: () => void;
+  /** ... and what closing the player does. */
+  onClosePlayer?: () => void;
+  /** Play button text, e.g. "Resume S2 E4". */
+  playLabel?: string;
+  /** Title over the player (default: the title). */
+  playerTitle?: string;
+  /** Extra controls next to the player's "Details" button (e.g. next episode). */
+  playerActions?: React.ReactNode;
 }
 
 const GLASS_BTN =
@@ -66,11 +77,18 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
     companies,
     trailerKey,
     player,
-    playTargetId,
+    playing: playingProp,
+    onPlay,
+    onClosePlayer,
+    playLabel = 'Play',
+    playerTitle,
+    playerActions,
   } = props;
   const search = useSearchParams();
   const scroll = useV3Scroll();
-  const [playing, setPlaying] = useState(false);
+  const [playingState, setPlayingState] = useState(false);
+  const controlled = playingProp !== undefined;
+  const playing = controlled ? playingProp : playingState;
   const [trailer, setTrailer] = useState(false);
   const [logoOk, setLogoOk] = useState(true);
   const { addToWatchlist, removeFromWatchlist, isInWatchlist } = useHybridData();
@@ -130,13 +148,16 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
   }, [runtimeMin]);
 
   const play = () => {
-    if (player) {
-      setPlaying(true);
-      scroll?.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    } else if (playTargetId) {
-      document.getElementById(playTargetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    if (onPlay) onPlay();
+    else if (player) setPlayingState(true);
+    scroll?.current?.scrollTo({ top: 0, behavior: 'smooth' });
   };
+  const closePlayer = () => (onClosePlayer ? onClosePlayer() : setPlayingState(false));
+
+  // Whenever the player opens (Play, or an episode picked further down), bring it into view.
+  useEffect(() => {
+    if (playing) scroll?.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [playing, scroll]);
 
   // ?play=1 (hero / Continue Watching links): start right away.
   useEffect(() => {
@@ -183,14 +204,17 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
           >
             <div className="mx-auto max-w-[1400px]">
               <div className="mb-3 flex items-center justify-between gap-4">
-                <p className="truncate text-lg font-semibold text-white/90">{title}</p>
-                <button
-                  type="button"
-                  onClick={() => setPlaying(false)}
-                  className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur-xl transition hover:bg-white/20"
-                >
-                  <X className="h-4 w-4" /> Details
-                </button>
+                <p className="truncate text-lg font-semibold text-white/90">{playerTitle ?? title}</p>
+                <div className="flex shrink-0 items-center gap-2">
+                  {playerActions}
+                  <button
+                    type="button"
+                    onClick={closePlayer}
+                    className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur-xl transition hover:bg-white/20"
+                  >
+                    <X className="h-4 w-4" /> Details
+                  </button>
+                </div>
               </div>
               <div className="overflow-hidden rounded-2xl ring-1 ring-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.6)]">{player}</div>
             </div>
@@ -202,7 +226,7 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
-            className="v3-gutter relative z-10 flex min-h-[86vh] flex-col justify-end gap-8 pb-10 pt-28 md:flex-row md:items-end md:justify-between"
+            className="v3-gutter relative z-10 flex min-h-[min(86vh,960px)] flex-col justify-end gap-8 pb-10 pt-28 md:flex-row md:items-end md:justify-between"
           >
             <div className="max-w-[680px]">
               {logoPath && logoOk ? (
@@ -237,7 +261,7 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
                   onClick={play}
                   className="flex items-center gap-2 rounded-full bg-white px-7 py-3 text-base font-semibold text-black shadow-[0_8px_30px_rgba(255,255,255,0.18)] transition hover:scale-[1.03] hover:bg-white/90 active:scale-[0.98]"
                 >
-                  <Play className="h-5 w-5 fill-black" /> Play
+                  <Play className="h-5 w-5 fill-black" /> {playLabel}
                 </button>
                 <button
                   type="button"

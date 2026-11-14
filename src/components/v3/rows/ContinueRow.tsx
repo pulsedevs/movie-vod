@@ -46,9 +46,13 @@ export default function ContinueRow() {
             ? `https://image.tmdb.org/t/p/w500${it.poster_path}`
             : null;
         const pct = Math.min(100, Math.max(0, it.progress ?? 0));
+        // Older TV entries use season_number / episode_number.
+        const legacy = it as ContinueWatchingItem & { season_number?: number; episode_number?: number };
+        const sn = it.season ?? legacy.season_number;
+        const en = it.episode ?? legacy.episode_number;
         const sub =
-          it.season != null && it.episode != null
-            ? `S${it.season} · E${it.episode}`
+          sn != null && en != null
+            ? `S${sn} · E${en}`
             : pct > 0
               ? `${Math.max(1, 100 - Math.round(pct))}% left`
               : '';

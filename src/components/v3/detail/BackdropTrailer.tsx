@@ -12,8 +12,9 @@ interface BackdropTrailerProps {
 }
 
 const START_DELAY_MS = 2500;
-/** Shown only after it has played this long: YouTube's start overlay (big play button, title) is gone by then. */
-const SETTLE_MS = 700;
+/** Shown only after the video clock has moved this far while playing: by then YouTube's start
+ *  overlay and any play/pause icon have faded out. */
+const SETTLE_SECONDS = 1;
 /** Paused only after the fade-out: YouTube draws its play button the instant it pauses. */
 const PAUSE_AFTER_MS = 400;
 
@@ -21,23 +22,35 @@ const PAUSE_AFTER_MS = 400;
 const PLAYING = 1;
 const ENDED = 0;
 
+type YtMessage = { event?: string; info?: unknown };
+
 /**
  * The trailer playing silently behind the detail hero: a YouTube embed (autoplay, muted, no
- * controls, inline), oversized to cover the box and crop YouTube's title bar and logo. None of
- * YouTube's own UI may ever show, so the video is visible only while it is actually playing and has
- * settled; it disappears first and pauses after (pause, buffering, end of the loop all hide it).
- * Steered through the embed's postMessage API.
+ * controls, inline), oversized to cover the box and crop YouTube's title bar and logo.
+ *
+ * None of YouTube's own UI may ever show, so the video is visible only while YouTube reports it
+ * playing AND its clock has really advanced (a "playing" state alone is not proof: a blocked
+ * autoplay can still sit on its play button). It hides at once on pause / buffering / end, and is
+ * paused only after it has faded out. Commands are sent only when needed (autoplay and mute come
+ * from the URL), since a needless play/pause makes YouTube flash its icon.
  */
 export default function BackdropTrailer({ youtubeKey, active, muted, onPlayingChange }: BackdropTrailerProps) {
   const ref = useRef<HTMLIFrameElement>(null);
   const [mounted, setMounted] = useState(false);
   const [settled, setSettled] = useState(false);
-  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const state = useRef<number | null>(null);
+  const playStart = useRef<number | null>(null); // video time when the current playing stretch began
+  const pausedByUs = useRef(false);
+  const mutedSent = useRef(true); // the URL starts it muted
 
   // Let the page and the backdrop settle first; a trailer that pops in instantly feels jumpy.
   useEffect(() => {
     setMounted(false);
     setSettled(false);
+    state.current = null;
+    playStart.current = null;
+    pausedByUs.current = false;
+    mutedSent.current = true;
     const id = setTimeout(() => setMounted(true), START_DELAY_MS);
     return () => clearTimeout(id);
   }, [youtubeKey]);
@@ -50,59 +63,80 @@ export default function BackdropTrailer({ youtubeKey, active, muted, onPlayingCh
     if (!mounted) return;
     const onMessage = (e: MessageEvent) => {
       if (e.source !== ref.current?.contentWindow) return;
-      let data: { info?: unknown } | null = null;
+      let msg: YtMessage | null = null;
       try {
-        data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        msg = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
       } catch {
         return;
       }
-      const info = data?.info as { playerState?: number } | number | undefined;
-      const state = typeof info === 'number' ? info : info?.playerState;
-      if (state === undefined) return;
-      if (settleTimer.current) clearTimeout(settleTimer.current);
-      if (state === PLAYING) {
-        settleTimer.current = setTimeout(() => setSettled(true), SETTLE_MS);
-      } else {
-        // Paused, buffering, cued, ended: hide at once.
-        setSettled(false);
-        if (state === ENDED) {
-          // Restart it ourselves (YouTube's own loop flashes its replay screen).
-          post('seekTo', [0, true]);
-          post('playVideo');
+      if (!msg || typeof msg !== 'object') return;
+
+      // Only these carry the player state; other events have unrelated numbers in `info`
+      // (onPlaybackRateChange sends 1, which is also the "playing" state).
+      let next: number | undefined;
+      let time: number | undefined;
+      if (msg.event === 'onStateChange' && typeof msg.info === 'number') {
+        next = msg.info;
+      } else if ((msg.event === 'infoDelivery' || msg.event === 'initialDelivery') && msg.info && typeof msg.info === 'object') {
+        const info = msg.info as { playerState?: number; currentTime?: number };
+        if (typeof info.playerState === 'number') next = info.playerState;
+        if (typeof info.currentTime === 'number') time = info.currentTime;
+      }
+
+      if (next !== undefined && next !== state.current) {
+        state.current = next;
+        playStart.current = null;
+        if (next !== PLAYING) {
+          setSettled(false); // paused, buffering, cued, ended: hide at once
+          if (next === ENDED) {
+            // Restart it ourselves (YouTube's own loop flashes its replay screen).
+            post('seekTo', [0, true]);
+            post('playVideo');
+          }
         }
+      }
+      if (time !== undefined && state.current === PLAYING) {
+        if (playStart.current === null || time < playStart.current) playStart.current = time;
+        else if (time - playStart.current >= SETTLE_SECONDS) setSettled(true);
       }
     };
     window.addEventListener('message', onMessage);
-    return () => {
-      window.removeEventListener('message', onMessage);
-      if (settleTimer.current) clearTimeout(settleTimer.current);
-    };
+    return () => window.removeEventListener('message', onMessage);
   }, [mounted, post]);
 
   const onLoad = () => {
+    // Ask YouTube to report its state and clock (it then sends infoDelivery messages).
     ref.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: youtubeKey, channel: 'widget' }), '*');
     post('addEventListener', ['onStateChange']);
   };
 
-  // Play when allowed; when not, it is already invisible (visible needs active) - pause once the fade is done.
+  // Pause once hidden (after the fade); resume only what we paused (autoplay starts it otherwise).
   useEffect(() => {
     if (!mounted) return;
     if (active) {
-      post('playVideo');
+      if (pausedByUs.current) {
+        pausedByUs.current = false;
+        post('playVideo');
+      }
       return;
     }
-    const id = setTimeout(() => post('pauseVideo'), PAUSE_AFTER_MS);
+    const id = setTimeout(() => {
+      pausedByUs.current = true;
+      post('pauseVideo');
+    }, PAUSE_AFTER_MS);
     return () => clearTimeout(id);
   }, [active, mounted, post]);
 
+  // Sound: only when the viewer changes it.
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || muted === mutedSent.current) return;
+    mutedSent.current = muted;
     if (muted) post('mute');
     else {
       post('unMute');
       post('setVolume', [70]);
     }
-  }, [muted, mounted, settled, post]);
+  }, [muted, mounted, post]);
 
   const visible = mounted && settled && active;
   useEffect(() => {
