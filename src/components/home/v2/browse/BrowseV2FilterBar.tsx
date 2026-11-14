@@ -8,7 +8,7 @@ import { useFilters } from '@/components/browse/FilterContext';
 import { navThemes, type NavTheme } from '../navThemes';
 import type { BrowseMediaType } from '@/lib/browse/loadBrowsePage';
 
-const sortOptions = {
+export const sortOptions = {
   movie: [
     { value: 'popularity.desc', label: 'Popular' },
     { value: 'vote_average.desc', label: 'Top rated' },
@@ -29,7 +29,7 @@ const sortOptions = {
   ],
 } as const;
 
-const ratingOptions = [
+export const ratingOptions = [
   { value: '0', label: 'Any' },
   { value: '8', label: '8+' },
   { value: '7', label: '7+' },
@@ -37,7 +37,7 @@ const ratingOptions = [
   { value: '5', label: '5+' },
 ];
 
-const voteCountOptions = [
+export const voteCountOptions = [
   { value: '1000', label: '1k+' },
   { value: '500', label: '500+' },
   { value: '100', label: '100+' },
@@ -46,7 +46,7 @@ const voteCountOptions = [
 ];
 
 const currentYear = new Date().getFullYear();
-const yearOptions = [
+export const yearOptions = [
   { value: '', label: 'All' },
   ...Array.from({ length: currentYear - 1900 + 1 }, (_, i) => ({
     value: String(currentYear - i),
@@ -283,12 +283,12 @@ function FilterDropdown({
   );
 }
 
-function votesTriggerLabel(minVoteCount?: string): string {
+export function votesTriggerLabel(minVoteCount?: string): string {
   if (!minVoteCount || minVoteCount === 'auto') return 'Votes';
   return voteCountOptions.find((o) => o.value === minVoteCount)?.label ?? 'Votes';
 }
 
-function genreTriggerLabel(genres: Genre[], selectedIds: string[]): string {
+export function genreTriggerLabel(genres: Genre[], selectedIds: string[]): string {
   if (selectedIds.length === 0) return 'Genre';
   if (selectedIds.length === 1) {
     const match = genres.find((g) => g.id.toString() === selectedIds[0]);

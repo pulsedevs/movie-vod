@@ -12,6 +12,7 @@ import NativeBannerAdWrapper from '@/components/ads/NativeBannerAdWrapper';
 import { BROWSE_V2_GRID_CLASS, BROWSE_V3_GRID_CLASS } from './browseV2Grid';
 import { PosterFrame } from '@/components/v3/rows/Cards';
 import InfiniteResults from '@/components/v3/browse/InfiniteResults';
+import FilterBarV3 from '@/components/v3/browse/FilterBarV3';
 import type { BrowseInitialFilters, BrowseMediaType } from '@/lib/browse/loadBrowsePage';
 import useDebounce from '@/hooks/useDebounce';
 import { navThemes } from '../navThemes';
@@ -176,7 +177,12 @@ export default function BrowseV2View({
         {/* Offers banner — directly below the search bar */}
         <NativeBannerAdWrapper className="text-center" />
 
-        {!isSearchMode && <BrowseV2FilterBar mediaType={mediaType} genres={genres} />}
+        {!isSearchMode &&
+          (v3 ? (
+            <FilterBarV3 mediaType={mediaType} genres={genres} />
+          ) : (
+            <BrowseV2FilterBar mediaType={mediaType} genres={genres} />
+          ))}
 
         {isSearchMode ? (
           <div>
