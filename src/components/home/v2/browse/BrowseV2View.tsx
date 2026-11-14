@@ -34,7 +34,8 @@ interface BrowseV2ViewProps {
   initialTotalResults: number;
   initialPage: number;
   initialFilters: BrowseInitialFilters;
-  /** v3 UI: the page draws its own big title, and the content follows the v3 page gutter. */
+  /** v3 UI: the page draws its own big title, the content follows the v3 page gutter, and there is
+   *  no search box (the nav bar has one). */
   v3?: boolean;
 }
 
@@ -151,16 +152,18 @@ export default function BrowseV2View({
           )}
         </div>
 
-        {/* Search — full-width */}
-        <div className="mb-4">
-          <HomeSearchField
-            value={query}
-            onChange={setQuery}
-            onClear={clearSearch}
-            onSubmit={handleSearchSubmit}
-            placeholder={searchPlaceholders[mediaType]}
-          />
-        </div>
+        {/* Search — full-width (v3 searches from the nav bar instead) */}
+        {!v3 && (
+          <div className="mb-4">
+            <HomeSearchField
+              value={query}
+              onChange={setQuery}
+              onClear={clearSearch}
+              onSubmit={handleSearchSubmit}
+              placeholder={searchPlaceholders[mediaType]}
+            />
+          </div>
+        )}
 
         {/* Offers banner — directly below the search bar */}
         <NativeBannerAdWrapper className="text-center" />
