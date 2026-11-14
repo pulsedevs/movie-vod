@@ -27,7 +27,10 @@ export function WideRow({ title, items, href }: { title: string; items: MediaIte
   if (!list.length) return null;
   const sub = (i: MediaItem) => {
     const d = i.media_type === 'movie' ? i.release_date : i.first_air_date;
-    return d ? new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : undefined;
+    // Fixed locale + UTC: the same text on the server and in the browser.
+    return d
+      ? new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+      : undefined;
   };
   return (
     <RowScroller title={title} href={href}>
@@ -52,7 +55,7 @@ export function Top10Row({ title, items }: { title: string; items: MediaItem[] }
           title={titleOf(item)}
           className="group/top flex shrink-0 items-end"
         >
-          <span className="v3-rank -mr-5 md:-mr-8">{i + 1}</span>
+          <span className="v3-rank -mr-2 md:-mr-3">{i + 1}</span>
           <div className="relative aspect-[2/3] w-[132px] overflow-hidden rounded-xl ring-1 ring-white/10 shadow-[0_14px_40px_rgba(0,0,0,0.55)] transition duration-300 group-hover/top:-translate-y-1 group-hover/top:scale-[1.03] md:w-[196px]">
             <Image
               src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}

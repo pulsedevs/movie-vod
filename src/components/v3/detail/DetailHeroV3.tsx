@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -75,9 +75,15 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
   const saved = isInWatchlist(item.id, kind);
   const Heading = headingLevel;
 
-  const ends = useMemo(() => {
-    if (!runtimeMin) return null;
-    return new Date(Date.now() + runtimeMin * 60000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  // The viewer's clock and timezone, so it is computed in the browser only (no hydration mismatch).
+  const [ends, setEnds] = useState<string | null>(null);
+  useEffect(() => {
+    if (!runtimeMin) return;
+    const tick = () =>
+      setEnds(new Date(Date.now() + runtimeMin * 60000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+    tick();
+    const id = setInterval(tick, 60000);
+    return () => clearInterval(id);
   }, [runtimeMin]);
 
   const play = () => {

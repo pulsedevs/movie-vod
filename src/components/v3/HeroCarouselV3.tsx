@@ -120,7 +120,7 @@ export default function HeroCarouselV3({ mediaType = 'movie', short = false }: H
         </motion.div>
       </AnimatePresence>
 
-      <div className={`v3-gutter absolute inset-x-0 ${short ? 'bottom-[18%]' : 'bottom-[16%]'} z-10`}>
+      <div className={`v3-gutter absolute inset-x-0 ${short ? 'bottom-[22%]' : 'bottom-[18%]'} z-10`}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={item.id}
@@ -204,7 +204,7 @@ export default function HeroCarouselV3({ mediaType = 'movie', short = false }: H
 
       {items.length > 1 && (
         <div
-          className={`v3-gutter absolute right-0 z-10 hidden items-center gap-2 md:flex ${short ? 'bottom-[20%]' : 'bottom-[22%]'} ${
+          className={`v3-gutter absolute right-0 z-10 hidden items-center gap-2 md:flex ${short ? 'bottom-[24%]' : 'bottom-[24%]'} ${
             paused ? 'v3-dot-paused' : ''
           }`}
           style={{ ['--v3-slide-ms' as string]: `${SLIDE_MS}ms` }}
