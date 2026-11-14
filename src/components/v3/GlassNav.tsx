@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { ArrowLeft, Bookmark, Clapperboard, Home, Search, Settings, Tv, type LucideIcon } from 'lucide-react';
 import BoredFlixLogoStatic from '@/components/branding/BoredFlixLogoStatic';
 import { isV2NavActive } from '@/utils/v2Shell';
+import { useTrailersPref } from './prefs';
 
 const HeaderAdToggle = dynamic(() => import('@/components/ads/HeaderAdToggle'), { ssr: false });
 const DesktopDiscordButton = dynamic(() => import('@/components/home/v2/DesktopDiscordButton'), { ssr: false });
@@ -29,6 +30,7 @@ export default function GlassNav({ scrolled = false }: { scrolled?: boolean }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
   const onDetail = /^\/(movie|tv)\//.test(pathname);
+  const [trailersOn, setTrailersOn] = useTrailersPref();
 
   useEffect(() => {
     if (!settingsOpen) return;
@@ -113,7 +115,24 @@ export default function GlassNav({ scrolled = false }: { scrolled?: boolean }) {
                 <Settings className="h-[18px] w-[18px]" />
               </button>
               {settingsOpen && (
-                <div className={`absolute right-0 top-full mt-3 flex flex-col gap-2 rounded-2xl p-3 ${GLASS} bg-black/60`}>
+                <div className={`absolute right-0 top-full mt-3 flex w-max flex-col gap-2 rounded-2xl p-3 ${GLASS} bg-black/60`}>
+                  <div className="flex items-center justify-between gap-6 px-1 py-1 text-sm text-white/85">
+                    <span>Background trailers</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={trailersOn}
+                      aria-label="Background trailers"
+                      onClick={() => setTrailersOn(!trailersOn)}
+                      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${trailersOn ? 'bg-white' : 'bg-white/20'}`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-5 w-5 rounded-full transition-all ${
+                          trailersOn ? 'left-[22px] bg-black' : 'left-0.5 bg-white'
+                        }`}
+                      />
+                    </button>
+                  </div>
                   <HeaderAdToggle />
                   <DesktopDiscordButton />
                 </div>

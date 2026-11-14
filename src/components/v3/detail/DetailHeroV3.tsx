@@ -1,15 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, Clapperboard, Play, Plus, Star, X } from 'lucide-react';
+import { Check, Clapperboard, Play, Plus, Star, Volume2, VolumeX, X } from 'lucide-react';
 import type { MediaItem } from '@/types';
 import { useHybridData } from '@/hooks/useHybridData';
 import { AmbientFrom, ambientSrc } from '../ambient/AmbientContext';
 import { useV3Scroll } from '../V3Shell';
+import { useTrailersPref } from '../prefs';
 import TrailerModal from './TrailerModal';
+import BackdropTrailer from './BackdropTrailer';
 
 export interface InfoRow {
   label: string;
@@ -75,6 +77,47 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
   const saved = isInWatchlist(item.id, kind);
   const Heading = headingLevel;
 
+  // Background trailer: desktop only, never under reduced motion or data saver, and only while
+  // the hero is on screen, the tab is visible and nothing else is playing.
+  const sectionRef = useRef<HTMLElement>(null);
+  const [trailersOn] = useTrailersPref();
+  const [canAutoplay, setCanAutoplay] = useState(false);
+  const [inView, setInView] = useState(true);
+  const [tabVisible, setTabVisible] = useState(true);
+  const [muted, setMuted] = useState(true);
+  const [bgPlaying, setBgPlaying] = useState(false);
+
+  useEffect(() => {
+    const wide = window.matchMedia('(min-width: 768px)');
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+    const check = () => setCanAutoplay(wide.matches && !still.matches && !saveData);
+    check();
+    wide.addEventListener('change', check);
+    still.addEventListener('change', check);
+    const onVis = () => setTabVisible(!document.hidden);
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      wide.removeEventListener('change', check);
+      still.removeEventListener('change', check);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, []);
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setInView(e.intersectionRatio > 0.35), {
+      root: scroll?.current ?? null,
+      threshold: [0, 0.35, 0.6],
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [scroll]);
+
+  const bgTrailer = !!trailerKey && trailersOn && canAutoplay;
+  const bgActive = bgTrailer && !playing && !trailer && inView && tabVisible;
+
   // The viewer's clock and timezone, so it is computed in the browser only (no hydration mismatch).
   const [ends, setEnds] = useState<string | null>(null);
   useEffect(() => {
@@ -105,7 +148,7 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
   }, []);
 
   return (
-    <section className="relative w-full">
+    <section ref={sectionRef} className="relative w-full">
       <AmbientFrom image={ambientSrc(backdropPath)} />
 
       {backdropPath && (
@@ -122,6 +165,9 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
             sizes="(max-width: 768px) 100vw, 78vw"
             className="object-cover object-[center_20%]"
           />
+          {bgTrailer && trailerKey && (
+            <BackdropTrailer youtubeKey={trailerKey} active={bgActive} muted={muted} onPlayingChange={setBgPlaying} />
+          )}
         </div>
       )}
 
@@ -204,6 +250,17 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
                 {trailerKey && (
                   <button type="button" onClick={() => setTrailer(true)} aria-label="Watch trailer" className={GLASS_BTN}>
                     <Clapperboard className="h-5 w-5" />
+                  </button>
+                )}
+                {bgPlaying && (
+                  <button
+                    type="button"
+                    onClick={() => setMuted((m) => !m)}
+                    aria-label={muted ? 'Unmute trailer' : 'Mute trailer'}
+                    aria-pressed={!muted}
+                    className={GLASS_BTN}
+                  >
+                    {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
                   </button>
                 )}
               </div>

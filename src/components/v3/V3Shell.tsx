@@ -63,7 +63,7 @@ export default function V3Shell({ children }: { children: React.ReactNode }) {
         <AmbientBackground />
         <GlassNav scrolled={scrolled} />
         <ScrollCtx.Provider value={scrollRef}>
-          <div ref={scrollRef} className="relative z-10 h-full overflow-y-auto overflow-x-hidden overscroll-contain">
+          <div ref={scrollRef} className="v3-scroll relative z-10 h-full overflow-y-auto overflow-x-hidden overscroll-contain">
             <main className="min-h-full pb-28 md:pb-16">{children}</main>
           </div>
         </ScrollCtx.Provider>
