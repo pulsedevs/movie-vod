@@ -12,22 +12,32 @@ interface BackdropTrailerProps {
 }
 
 const START_DELAY_MS = 2500;
+/** Shown only after it has played this long: YouTube's start overlay (big play button, title) is gone by then. */
+const SETTLE_MS = 700;
+/** Paused only after the fade-out: YouTube draws its play button the instant it pauses. */
+const PAUSE_AFTER_MS = 400;
+
+// YouTube player states.
+const PLAYING = 1;
+const ENDED = 0;
 
 /**
- * The trailer playing silently behind the detail hero: a YouTube embed (autoplay, muted, looped,
- * no controls, inline), oversized to cover the box and crop YouTube's own title bar and logo.
- * It stays invisible until YouTube reports "playing" (so no black flash or spinner shows), and is
- * steered through the embed's postMessage API (mute / unMute / play / pause).
+ * The trailer playing silently behind the detail hero: a YouTube embed (autoplay, muted, no
+ * controls, inline), oversized to cover the box and crop YouTube's title bar and logo. None of
+ * YouTube's own UI may ever show, so the video is visible only while it is actually playing and has
+ * settled; it disappears first and pauses after (pause, buffering, end of the loop all hide it).
+ * Steered through the embed's postMessage API.
  */
 export default function BackdropTrailer({ youtubeKey, active, muted, onPlayingChange }: BackdropTrailerProps) {
   const ref = useRef<HTMLIFrameElement>(null);
   const [mounted, setMounted] = useState(false);
-  const [playing, setPlaying] = useState(false);
+  const [settled, setSettled] = useState(false);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Let the page and the backdrop settle first; a trailer that pops in instantly feels jumpy.
   useEffect(() => {
     setMounted(false);
-    setPlaying(false);
+    setSettled(false);
     const id = setTimeout(() => setMounted(true), START_DELAY_MS);
     return () => clearTimeout(id);
   }, [youtubeKey]);
@@ -36,12 +46,11 @@ export default function BackdropTrailer({ youtubeKey, active, muted, onPlayingCh
     ref.current?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args }), '*');
   }, []);
 
-  // YouTube tells us its state once we say we are listening.
   useEffect(() => {
     if (!mounted) return;
     const onMessage = (e: MessageEvent) => {
       if (e.source !== ref.current?.contentWindow) return;
-      let data: { event?: string; info?: unknown } | null = null;
+      let data: { info?: unknown } | null = null;
       try {
         data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
       } catch {
@@ -49,21 +58,41 @@ export default function BackdropTrailer({ youtubeKey, active, muted, onPlayingCh
       }
       const info = data?.info as { playerState?: number } | number | undefined;
       const state = typeof info === 'number' ? info : info?.playerState;
-      if (state === 1) setPlaying(true); // playing
-      else if (state === 0 || state === 2) setPlaying(false); // ended / paused
+      if (state === undefined) return;
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+      if (state === PLAYING) {
+        settleTimer.current = setTimeout(() => setSettled(true), SETTLE_MS);
+      } else {
+        // Paused, buffering, cued, ended: hide at once.
+        setSettled(false);
+        if (state === ENDED) {
+          // Restart it ourselves (YouTube's own loop flashes its replay screen).
+          post('seekTo', [0, true]);
+          post('playVideo');
+        }
+      }
     };
     window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
-  }, [mounted]);
+    return () => {
+      window.removeEventListener('message', onMessage);
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+    };
+  }, [mounted, post]);
 
   const onLoad = () => {
     ref.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: youtubeKey, channel: 'widget' }), '*');
     post('addEventListener', ['onStateChange']);
   };
 
+  // Play when allowed; when not, it is already invisible (visible needs active) - pause once the fade is done.
   useEffect(() => {
     if (!mounted) return;
-    post(active ? 'playVideo' : 'pauseVideo');
+    if (active) {
+      post('playVideo');
+      return;
+    }
+    const id = setTimeout(() => post('pauseVideo'), PAUSE_AFTER_MS);
+    return () => clearTimeout(id);
   }, [active, mounted, post]);
 
   useEffect(() => {
@@ -73,9 +102,9 @@ export default function BackdropTrailer({ youtubeKey, active, muted, onPlayingCh
       post('unMute');
       post('setVolume', [70]);
     }
-  }, [muted, mounted, playing, post]);
+  }, [muted, mounted, settled, post]);
 
-  const visible = mounted && playing && active;
+  const visible = mounted && settled && active;
   useEffect(() => {
     onPlayingChange?.(visible);
   }, [visible, onPlayingChange]);
@@ -87,8 +116,6 @@ export default function BackdropTrailer({ youtubeKey, active, muted, onPlayingCh
     mute: '1',
     controls: '0',
     rel: '0',
-    loop: '1',
-    playlist: youtubeKey, // loop needs the video listed as its own playlist
     modestbranding: '1',
     iv_load_policy: '3',
     disablekb: '1',
@@ -101,7 +128,9 @@ export default function BackdropTrailer({ youtubeKey, active, muted, onPlayingCh
   return (
     <div
       aria-hidden
-      className={`absolute inset-0 overflow-hidden transition-opacity duration-[1200ms] ${visible ? 'opacity-100' : 'opacity-0'}`}
+      className={`absolute inset-0 overflow-hidden transition-opacity ${
+        visible ? 'opacity-100 duration-[900ms]' : 'opacity-0 duration-200'
+      }`}
       style={{ containerType: 'size' }}
     >
       <iframe
