@@ -58,7 +58,7 @@ function ContinueCard({
   return (
     <div
       ref={ref}
-      className="relative w-[250px] shrink-0 md:w-[300px] xl:w-[330px]"
+      className="relative w-60 shrink-0 md:w-72"
       onMouseEnter={() =>
         ref.current &&
         onHoverStart(
@@ -69,8 +69,8 @@ function ContinueCard({
       onMouseLeave={onHoverEnd}
     >
       <Link href={`${href}?play=1`} className="group/cw block">
-        <div className="relative aspect-video overflow-hidden rounded-xl bg-white/[0.05] ring-1 ring-white/[0.08] shadow-[0_12px_32px_rgba(0,0,0,0.45)] transition duration-300 group-hover/cw:ring-white/25">
-          {img && <Image src={img} alt={title} fill sizes="330px" className="object-cover" />}
+        <div className="relative aspect-video overflow-hidden rounded-2xl bg-white/[0.05] ring-1 ring-white/[0.08] shadow-[0_12px_32px_rgba(0,0,0,0.45)] transition duration-300 group-hover/cw:ring-white/25">
+          {img && <Image src={img} alt={title} fill sizes="288px" className="object-cover" />}
           <div className="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition group-focus-visible/cw:opacity-100">
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-black">
               <Play className="ml-0.5 h-5 w-5 fill-black" />
@@ -82,8 +82,8 @@ function ContinueCard({
             </div>
           )}
         </div>
-        <p className="mt-2.5 line-clamp-1 text-[15px] font-semibold text-white">{title}</p>
-        {sub && <p className="text-xs text-white/55">{sub}</p>}
+        <p className="mt-2.5 truncate text-[15px] font-medium text-white/90">{title}</p>
+        {sub && <p className="text-[13px] text-white/55">{sub}</p>}
       </Link>
       {editing && (
         <button
@@ -170,6 +170,7 @@ export default function ContinueRow() {
       <RowScroller
         title="Continue Watching"
         href="/library"
+        gap="gap-4"
         action={
           <button
             type="button"
