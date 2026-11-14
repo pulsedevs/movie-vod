@@ -11,6 +11,7 @@ import BrowseV2FilterBar from './BrowseV2FilterBar';
 import NativeBannerAdWrapper from '@/components/ads/NativeBannerAdWrapper';
 import { BROWSE_V2_GRID_CLASS, BROWSE_V3_GRID_CLASS } from './browseV2Grid';
 import { PosterFrame } from '@/components/v3/rows/Cards';
+import InfiniteResults from '@/components/v3/browse/InfiniteResults';
 import type { BrowseInitialFilters, BrowseMediaType } from '@/lib/browse/loadBrowsePage';
 import useDebounce from '@/hooks/useDebounce';
 import { navThemes } from '../navThemes';
@@ -40,7 +41,8 @@ interface BrowseV2ViewProps {
   v3?: boolean;
 }
 
-/** v3: the same poster as the home rows (Play circle, title, year and rating on hover). */
+/** v3: the same poster as the home rows (Play circle, title, year and rating on hover), in a grid
+ *  that loads more as you scroll instead of page buttons. */
 const renderV3Poster = (item: MediaItem, i: number) => (
   <PosterFrame item={item} priority={i < 6} sizes="(max-width: 640px) 33vw, 210px" />
 );
@@ -199,17 +201,27 @@ export default function BrowseV2View({
           </div>
         ) : (
           <Suspense fallback={<BrowseV2Loading />}>
-            <PaginatedResults
-              initialResults={initialResults}
-              initialTotalPages={initialTotalPages}
-              initialTotalResults={initialTotalResults}
-              initialPage={initialPage}
-              mediaType={mediaType}
-              gridClassName={v3 ? BROWSE_V3_GRID_CLASS : BROWSE_V2_GRID_CLASS}
-              compact
-              compactCards
-              renderItem={v3 ? renderV3Poster : undefined}
-            />
+            {v3 ? (
+              <InfiniteResults
+                initialResults={initialResults}
+                initialTotalPages={initialTotalPages}
+                initialPage={initialPage}
+                mediaType={mediaType}
+                gridClassName={BROWSE_V3_GRID_CLASS}
+                renderItem={renderV3Poster}
+              />
+            ) : (
+              <PaginatedResults
+                initialResults={initialResults}
+                initialTotalPages={initialTotalPages}
+                initialTotalResults={initialTotalResults}
+                initialPage={initialPage}
+                mediaType={mediaType}
+                gridClassName={BROWSE_V2_GRID_CLASS}
+                compact
+                compactCards
+              />
+            )}
           </Suspense>
         )}
       </div>

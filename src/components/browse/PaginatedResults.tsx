@@ -19,8 +19,6 @@ interface PaginatedResultsProps {
   compact?: boolean;
   compactCards?: boolean;
   provider?: number;
-  /** Draws each result instead of the default MediaCard (the v3 pages use their own poster). */
-  renderItem?: (item: MediaItem, index: number) => React.ReactNode;
 }
 
 const PaginatedResults: React.FC<PaginatedResultsProps> = ({
@@ -33,7 +31,6 @@ const PaginatedResults: React.FC<PaginatedResultsProps> = ({
   compact = false,
   compactCards = false,
   provider,
-  renderItem,
 }) => {  const { filters } = useFilters();
   const router = useRouter();
     // Debounce filter changes to prevent excessive API calls
@@ -481,13 +478,9 @@ const PaginatedResults: React.FC<PaginatedResultsProps> = ({
               'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6 gap-4 max-w-7xl mx-auto'
             }
           >
-            {results.map((item, i) =>
-              renderItem ? (
-                <React.Fragment key={item.id}>{renderItem(item, i)}</React.Fragment>
-              ) : (
-                <MediaCard key={item.id} item={item} compact={compactCards} />
-              ),
-            )}
+            {results.map((item) => (
+              <MediaCard key={item.id} item={item} compact={compactCards} />
+            ))}
           </div>
           {totalPages > 1 && renderPagination()}
         </>
