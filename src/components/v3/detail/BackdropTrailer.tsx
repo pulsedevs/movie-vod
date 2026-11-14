@@ -9,6 +9,8 @@ interface BackdropTrailerProps {
   muted: boolean;
   /** Reports when frames are actually on screen, so the page can show the mute button. */
   onPlayingChange?: (playing: boolean) => void;
+  /** Wait before loading the video (the detail hero lets the page settle; a hover card starts sooner). */
+  delayMs?: number;
 }
 
 const START_DELAY_MS = 2500;
@@ -34,7 +36,13 @@ type YtMessage = { event?: string; info?: unknown };
  * paused only after it has faded out. Commands are sent only when needed (autoplay and mute come
  * from the URL), since a needless play/pause makes YouTube flash its icon.
  */
-export default function BackdropTrailer({ youtubeKey, active, muted, onPlayingChange }: BackdropTrailerProps) {
+export default function BackdropTrailer({
+  youtubeKey,
+  active,
+  muted,
+  onPlayingChange,
+  delayMs = START_DELAY_MS,
+}: BackdropTrailerProps) {
   const ref = useRef<HTMLIFrameElement>(null);
   const [mounted, setMounted] = useState(false);
   const [settled, setSettled] = useState(false);
@@ -51,9 +59,9 @@ export default function BackdropTrailer({ youtubeKey, active, muted, onPlayingCh
     playStart.current = null;
     pausedByUs.current = false;
     mutedSent.current = true;
-    const id = setTimeout(() => setMounted(true), START_DELAY_MS);
+    const id = setTimeout(() => setMounted(true), delayMs);
     return () => clearTimeout(id);
-  }, [youtubeKey]);
+  }, [youtubeKey, delayMs]);
 
   const post = useCallback((func: string, args: unknown[] = []) => {
     ref.current?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args }), '*');
@@ -175,11 +183,12 @@ export default function BackdropTrailer({ youtubeKey, active, muted, onPlayingCh
         allow="autoplay; encrypted-media; picture-in-picture"
         onLoad={onLoad}
         className="pointer-events-none absolute left-1/2 top-1/2 border-0"
-        // Cover the box at 16:9, then 25% larger so YouTube's title bar and logo fall outside it.
+        // Cover the box at 16:9, then 36% larger: YouTube's title bar and logo fall outside it, and
+        // so do the black bars of a 2.39:1 "scope" trailer letterboxed in its 16:9 frame (1 / 0.744).
         style={{
           width: 'max(100cqw, 177.78cqh)',
           height: 'max(100cqh, 56.25cqw)',
-          transform: 'translate(-50%, -50%) scale(1.25)',
+          transform: 'translate(-50%, -50%) scale(1.36)',
         }}
       />
     </div>

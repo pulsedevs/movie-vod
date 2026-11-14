@@ -1,14 +1,10 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import type { MediaItem } from '@/types';
 import { PROVIDERS } from '@/config/providers';
-import { useDetailHref } from '@/hooks/useDetailHref';
 import RowScroller from './RowScroller';
-import { PosterCard, WideCard } from './Cards';
-
-const titleOf = (i: MediaItem) => (i.media_type === 'movie' ? i.title : i.name) || 'Untitled';
+import { PosterCard, PosterFrame, WideCard } from './Cards';
 
 export function PosterRow({ title, items, href }: { title: string; items: MediaItem[]; href?: string }) {
   const list = items.filter((i) => i.poster_path);
@@ -43,29 +39,19 @@ export function WideRow({ title, items, href }: { title: string; items: MediaIte
 
 /** Top 10: big hollow rank numbers, each poster tucked over the right edge of its number. */
 export function Top10Row({ title, items }: { title: string; items: MediaItem[] }) {
-  const { mediaHref } = useDetailHref();
   const list = items.filter((i) => i.poster_path).slice(0, 10);
   if (!list.length) return null;
   return (
     <RowScroller title={title} gap="gap-2 md:gap-4">
       {list.map((item, i) => (
-        <Link
-          key={`${item.media_type}-${item.id}`}
-          href={mediaHref(item)}
-          title={titleOf(item)}
-          className="group/top flex shrink-0 items-end"
-        >
-          <span className="v3-rank -mr-2 md:-mr-3">{i + 1}</span>
-          <div className="relative aspect-[2/3] w-[132px] overflow-hidden rounded-xl ring-1 ring-white/10 shadow-[0_14px_40px_rgba(0,0,0,0.55)] transition duration-300 group-hover/top:-translate-y-1 group-hover/top:scale-[1.03] md:w-[196px]">
-            <Image
-              src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
-              alt={titleOf(item)}
-              fill
-              sizes="(max-width: 768px) 132px, 196px"
-              className="object-cover"
-            />
+        <div key={`${item.media_type}-${item.id}`} className="flex shrink-0 items-end">
+          <span aria-hidden className="v3-rank -mr-2 md:-mr-3">
+            {i + 1}
+          </span>
+          <div className="w-[132px] md:w-[196px]">
+            <PosterFrame item={item} sizes="(max-width: 768px) 132px, 196px" />
           </div>
-        </Link>
+        </div>
       ))}
     </RowScroller>
   );
