@@ -9,7 +9,8 @@ import MediaCard from '@/components/media/MediaCard';
 import HomeSearchField from '../HomeSearchField';
 import BrowseV2FilterBar from './BrowseV2FilterBar';
 import NativeBannerAdWrapper from '@/components/ads/NativeBannerAdWrapper';
-import { BROWSE_V2_GRID_CLASS } from './browseV2Grid';
+import { BROWSE_V2_GRID_CLASS, BROWSE_V3_GRID_CLASS } from './browseV2Grid';
+import { PosterFrame } from '@/components/v3/rows/Cards';
 import type { BrowseInitialFilters, BrowseMediaType } from '@/lib/browse/loadBrowsePage';
 import useDebounce from '@/hooks/useDebounce';
 import { navThemes } from '../navThemes';
@@ -38,6 +39,11 @@ interface BrowseV2ViewProps {
    *  no search box (the nav bar has one). */
   v3?: boolean;
 }
+
+/** v3: the same poster as the home rows (Play circle, title, year and rating on hover). */
+const renderV3Poster = (item: MediaItem, i: number) => (
+  <PosterFrame item={item} priority={i < 6} sizes="(max-width: 640px) 33vw, 210px" />
+);
 
 function BrowseV2Loading() {
   return (
@@ -199,9 +205,10 @@ export default function BrowseV2View({
               initialTotalResults={initialTotalResults}
               initialPage={initialPage}
               mediaType={mediaType}
-              gridClassName={BROWSE_V2_GRID_CLASS}
+              gridClassName={v3 ? BROWSE_V3_GRID_CLASS : BROWSE_V2_GRID_CLASS}
               compact
               compactCards
+              renderItem={v3 ? renderV3Poster : undefined}
             />
           </Suspense>
         )}
