@@ -16,6 +16,8 @@ import { loadTvDetail } from '@/lib/detail/loadTvDetail';
 import { loadSeasonDetail } from '@/lib/detail/loadEpisodeDetail';
 import type { TvShowWithCredits } from '@/lib/detail/tvTypes';
 import TvDetailV2 from '@/components/detail/v2/TvDetailV2';
+import { TvDetailV3 } from '@/components/v3/detail/DetailV3';
+import { isV3 } from '@/utils/uiSkin';
 import Breadcrumbs from '@/components/common/Breadcrumbs';
 import { getHomeLayout } from '@/utils/homeLayout';
 
@@ -263,17 +265,30 @@ export default async function TvShowDetailPage({ params, searchParams }: TvShowD
           baseUrl={domain}
         />
       )}
-      <TvDetailV2
-        show={show}
-        sources={sources}
-        posterUrl={posterUrl}
-        backdropUrl={backdropUrl}
-        firstAirYear={firstAirYear}
-        trailerId={trailerId}
-        initialSourceIndex={initialSourceIndex}
-        inShell={getHomeLayout() === 'v2'}
-        episodeLinks={episodeLinks}
-      />
+      {isV3() ? (
+        <TvDetailV3
+          show={show}
+          sources={sources}
+          posterUrl={posterUrl}
+          backdropUrl={backdropUrl}
+          firstAirYear={firstAirYear}
+          trailerId={trailerId}
+          initialSourceIndex={initialSourceIndex}
+          episodeLinks={episodeLinks}
+        />
+      ) : (
+        <TvDetailV2
+          show={show}
+          sources={sources}
+          posterUrl={posterUrl}
+          backdropUrl={backdropUrl}
+          firstAirYear={firstAirYear}
+          trailerId={trailerId}
+          initialSourceIndex={initialSourceIndex}
+          inShell={getHomeLayout() === 'v2'}
+          episodeLinks={episodeLinks}
+        />
+      )}
     </>
   );
 }

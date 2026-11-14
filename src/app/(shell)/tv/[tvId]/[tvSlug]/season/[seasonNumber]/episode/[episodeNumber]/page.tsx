@@ -10,6 +10,8 @@ import { buildEpisodeFaqItems, buildEpisodeFaqJsonLd } from '@/utils/seoFaq';
 import { loadTvDetail } from '@/lib/detail/loadTvDetail';
 import { loadEpisodeDetail } from '@/lib/detail/loadEpisodeDetail';
 import TvDetailV2 from '@/components/detail/v2/TvDetailV2';
+import { TvDetailV3 } from '@/components/v3/detail/DetailV3';
+import { isV3 } from '@/utils/uiSkin';
 import DetailV2Faq from '@/components/detail/v2/DetailV2Faq';
 import { getHomeLayout } from '@/utils/homeLayout';
 
@@ -210,18 +212,32 @@ export default async function EpisodePage({ params }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
 
-      <TvDetailV2
-        show={show}
-        sources={sources}
-        posterUrl={images.standard}
-        backdropUrl={backdropUrl}
-        firstAirYear={firstAirYear}
-        trailerId={trailerId}
-        inShell={getHomeLayout() === 'v2'}
-        initialSeasonNumber={episode.season_number}
-        initialEpisodeNumber={episode.episode_number}
-        asSubheading
-      />
+      {isV3() ? (
+        <TvDetailV3
+          show={show}
+          sources={sources}
+          posterUrl={images.standard}
+          backdropUrl={backdropUrl}
+          firstAirYear={firstAirYear}
+          trailerId={trailerId}
+          initialSeasonNumber={episode.season_number}
+          initialEpisodeNumber={episode.episode_number}
+          asSubheading
+        />
+      ) : (
+        <TvDetailV2
+          show={show}
+          sources={sources}
+          posterUrl={images.standard}
+          backdropUrl={backdropUrl}
+          firstAirYear={firstAirYear}
+          trailerId={trailerId}
+          inShell={getHomeLayout() === 'v2'}
+          initialSeasonNumber={episode.season_number}
+          initialEpisodeNumber={episode.episode_number}
+          asSubheading
+        />
+      )}
 
       {/* Episode content — server-rendered, and the only genuinely unique text on the page. */}
       <section className="mx-auto max-w-[1400px] px-4 pb-10 sm:px-6">

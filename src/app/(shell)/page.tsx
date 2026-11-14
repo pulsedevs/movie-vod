@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import HomeRowsMain from '@/components/home/v2/HomeRowsMain';
 import HomePageClassic from '@/components/home/HomePageClassic';
 import { getHomeLayout } from '@/utils/homeLayout';
+import { isV3 } from '@/utils/uiSkin';
+import HomeV3 from '@/components/v3/HomeV3';
 import { getCanonicalOrigin, buildCanonicalUrl } from '@/utils/siteUrl';
 
 export const metadata: Metadata = {
@@ -55,7 +57,7 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
       />
-      {getHomeLayout() === 'v2' ? <HomeRowsMain /> : <HomePageClassic />}
+      {isV3() ? <HomeV3 /> : getHomeLayout() === 'v2' ? <HomeRowsMain /> : <HomePageClassic />}
     </>
   );
 }

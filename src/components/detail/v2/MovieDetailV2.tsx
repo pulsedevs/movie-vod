@@ -25,6 +25,8 @@ interface MovieDetailV2Props {
   initialSourceIndex?: number;
   /** When true, player sits inside the v2 3-column shell (no top header, embedded player). */
   inShell?: boolean;
+  /** v3 UI: render only the player (the v3 detail page draws everything around it). */
+  playerOnly?: boolean;
 }
 
 export default function MovieDetailV2({
@@ -36,6 +38,7 @@ export default function MovieDetailV2({
   trailerId,
   initialSourceIndex,
   inShell = false,
+  playerOnly = false,
 }: MovieDetailV2Props) {
   const directors =
     movie.credits?.crew?.filter((c) => c.job === 'Director').map((d) => d.name) ?? [];
@@ -72,9 +75,9 @@ export default function MovieDetailV2({
             imdbId={movie.external_ids?.imdb_id}
             year={movie.release_date ? parseInt(movie.release_date.substring(0, 4), 10) : undefined}
             initialSourceIndex={initialSourceIndex}
-            embedded={inShell}
-            disableAutoScroll={inShell}
-            controlsInPanel={inShell}
+            embedded={inShell || playerOnly}
+            disableAutoScroll={inShell || playerOnly}
+            controlsInPanel={inShell && !playerOnly}
           />
         </Suspense>
       ) : (
@@ -96,6 +99,10 @@ export default function MovieDetailV2({
       )}
     </MovieReleaseHandler>
   );
+
+  if (playerOnly) {
+    return <div className="text-white">{playerBlock}</div>;
+  }
 
   const metadataBlock = (
     <article className={`relative ${inShell ? 'px-4 py-4' : 'mx-auto max-w-[1400px] px-4 py-7 sm:px-6'}`}>

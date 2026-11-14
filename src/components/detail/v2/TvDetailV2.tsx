@@ -37,6 +37,8 @@ interface TvDetailV2Props {
     episodes: Array<{ episode_number: number; name?: string }>;
     otherSeasons: number[];
   } | null;
+  /** v3 UI: render only the season/episode browser + player (the v3 page draws the rest). */
+  playerOnly?: boolean;
 }
 
 export default function TvDetailV2({
@@ -52,6 +54,7 @@ export default function TvDetailV2({
   initialEpisodeNumber,
   asSubheading = false,
   episodeLinks = null,
+  playerOnly = false,
 }: TvDetailV2Props) {
   const ShowHeading = asSubheading ? 'h2' : 'h1';
   const creators = show.created_by?.map((c) => c.name) ?? [];
@@ -97,6 +100,10 @@ export default function TvDetailV2({
       )}
     </TVReleaseHandler>
   );
+
+  if (playerOnly) {
+    return <div className="text-white">{playerBlock}</div>;
+  }
 
   const statusColor =
     show.status?.toLowerCase() === 'returning series'

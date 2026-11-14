@@ -6,6 +6,8 @@ import { getMovieUrl, getTvShowUrl } from '@/utils/movieLinks';
 import { getHomeLayout } from '@/utils/homeLayout';
 import { loadBrowsePage } from '@/lib/browse/loadBrowsePage';
 import BrowseV2View from '@/components/home/v2/browse/BrowseV2View';
+import BrowseV3 from '@/components/v3/BrowseV3';
+import { isV3 } from '@/utils/uiSkin';
 import BrowseItemListJsonLd from '@/components/browse/BrowseItemListJsonLd';
 
 // Define metadata for the page
@@ -66,15 +68,30 @@ export default async function BrowseAnimePage({ searchParams }: BrowseAnimePageP
     return (
       <>
         <BrowseItemListJsonLd mediaType="anime" results={data.results} />
-        <BrowseV2View
-          mediaType="anime"
-          genres={data.genres}
-          initialResults={data.results}
-          initialTotalPages={data.totalPages}
-          initialTotalResults={data.totalResults}
-          initialPage={data.currentPage}
-          initialFilters={data.initialFilters}
-        />
+        {isV3() ? (
+          <BrowseV3 mediaType="anime">
+            <BrowseV2View
+              mediaType="anime"
+              genres={data.genres}
+              initialResults={data.results}
+              initialTotalPages={data.totalPages}
+              initialTotalResults={data.totalResults}
+              initialPage={data.currentPage}
+              initialFilters={data.initialFilters}
+              v3
+            />
+          </BrowseV3>
+        ) : (
+          <BrowseV2View
+            mediaType="anime"
+            genres={data.genres}
+            initialResults={data.results}
+            initialTotalPages={data.totalPages}
+            initialTotalResults={data.totalResults}
+            initialPage={data.currentPage}
+            initialFilters={data.initialFilters}
+          />
+        )}
       </>
     );
   }

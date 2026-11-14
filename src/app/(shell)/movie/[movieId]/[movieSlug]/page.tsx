@@ -15,6 +15,8 @@ import { movieFaqInput } from '@/lib/detail/faqInput';
 import { loadMovieDetail } from '@/lib/detail/loadMovieDetail';
 import type { MovieWithCredits } from '@/lib/detail/movieTypes';
 import MovieDetailV2 from '@/components/detail/v2/MovieDetailV2';
+import { MovieDetailV3 } from '@/components/v3/detail/DetailV3';
+import { isV3 } from '@/utils/uiSkin';
 import Breadcrumbs from '@/components/common/Breadcrumbs';
 import { getHomeLayout } from '@/utils/homeLayout';
 
@@ -239,16 +241,28 @@ export default async function MovieDetailPage({ params, searchParams }: MovieDet
           baseUrl={domain}
         />
       )}
-      <MovieDetailV2
-        movie={movie}
-        sources={sources}
-        posterUrl={posterUrl}
-        backdropUrl={backdropUrl}
-        releaseYear={releaseYear}
-        trailerId={trailerId}
-        initialSourceIndex={initialSourceIndex}
-        inShell={getHomeLayout() === 'v2'}
-      />
+      {isV3() ? (
+        <MovieDetailV3
+          movie={movie}
+          sources={sources}
+          posterUrl={posterUrl}
+          backdropUrl={backdropUrl}
+          releaseYear={releaseYear}
+          trailerId={trailerId}
+          initialSourceIndex={initialSourceIndex}
+        />
+      ) : (
+        <MovieDetailV2
+          movie={movie}
+          sources={sources}
+          posterUrl={posterUrl}
+          backdropUrl={backdropUrl}
+          releaseYear={releaseYear}
+          trailerId={trailerId}
+          initialSourceIndex={initialSourceIndex}
+          inShell={getHomeLayout() === 'v2'}
+        />
+      )}
     </>
   );
 }

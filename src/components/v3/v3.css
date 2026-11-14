@@ -1,0 +1,141 @@
+/* v3 UI (NEXT_PUBLIC_UI=v3) - only what Tailwind utilities can't say neatly. */
+
+.v3-root {
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.v3-display {
+  font-family: 'Montserrat', 'Inter', system-ui, sans-serif;
+}
+
+/* Hero / detail backdrop: fades out to the left and to the bottom, into the moving background
+   (a mask, not a dark overlay - so the aurora shows through). */
+.v3-hero-mask {
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.55) 22%, #000 48%),
+    linear-gradient(to top, transparent 0%, rgba(0, 0, 0, 0.6) 22%, #000 55%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.55) 22%, #000 48%),
+    linear-gradient(to top, transparent 0%, rgba(0, 0, 0, 0.6) 22%, #000 55%);
+  mask-composite: intersect;
+}
+@media (max-width: 767px) {
+  .v3-hero-mask {
+    -webkit-mask-image: linear-gradient(to top, transparent 0%, rgba(0, 0, 0, 0.7) 30%, #000 60%);
+    mask-image: linear-gradient(to top, transparent 0%, rgba(0, 0, 0, 0.7) 30%, #000 60%);
+  }
+}
+
+/* Rows scroll sideways without a visible scrollbar. */
+.v3-scroller {
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: var(--v3-gutter);
+}
+.v3-scroller::-webkit-scrollbar {
+  display: none;
+}
+.v3-scroller > * {
+  scroll-snap-align: start;
+}
+
+/* Page gutter shared by the nav, hero and rows. */
+.v3-root {
+  --v3-gutter: 1.25rem;
+}
+@media (min-width: 768px) {
+  .v3-root {
+    --v3-gutter: 3.5rem;
+  }
+}
+.v3-gutter {
+  padding-inline: var(--v3-gutter);
+}
+
+/* Top 10: hollow outlined rank numbers behind each poster. */
+.v3-rank {
+  font-family: 'Montserrat', 'Inter', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: clamp(7.5rem, 15vw, 14rem);
+  line-height: 0.78;
+  letter-spacing: -0.07em;
+  color: transparent;
+  -webkit-text-stroke: 3px rgba(255, 255, 255, 0.32);
+  user-select: none;
+}
+
+/* Hero slide dots: the active one is a bar that fills while the slide is shown. */
+@keyframes v3-dot-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.v3-dot-fill {
+  transform-origin: left center;
+  animation: v3-dot-fill var(--v3-slide-ms, 8000ms) linear forwards;
+}
+.v3-dot-paused .v3-dot-fill {
+  animation-play-state: paused;
+}
+
+/* No-WebGL fallback for the ambient background: three drifting blurred blobs. */
+.v3-blobs span {
+  position: absolute;
+  width: 70vmax;
+  height: 70vmax;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.75;
+  transition: background 1.5s ease;
+  animation: v3-drift 28s ease-in-out infinite alternate;
+}
+.v3-blobs span:nth-child(1) {
+  top: -30vmax;
+  left: -10vmax;
+}
+.v3-blobs span:nth-child(2) {
+  top: -20vmax;
+  right: -25vmax;
+  animation-duration: 34s;
+  animation-direction: alternate-reverse;
+}
+.v3-blobs span:nth-child(3) {
+  bottom: -45vmax;
+  left: 20vmax;
+  animation-duration: 40s;
+}
+@keyframes v3-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(8vmax, 6vmax, 0) scale(1.15);
+  }
+}
+
+@keyframes v3-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.v3-card-in {
+  animation: v3-card-in 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v3-blobs span,
+  .v3-card-in {
+    animation: none;
+  }
+  .v3-dot-fill {
+    animation: none;
+    transform: scaleX(1);
+  }
+}

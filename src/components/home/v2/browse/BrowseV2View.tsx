@@ -34,6 +34,8 @@ interface BrowseV2ViewProps {
   initialTotalResults: number;
   initialPage: number;
   initialFilters: BrowseInitialFilters;
+  /** v3 UI: the page draws its own big title, and the content follows the v3 page gutter. */
+  v3?: boolean;
 }
 
 function BrowseV2Loading() {
@@ -52,6 +54,7 @@ export default function BrowseV2View({
   initialTotalResults,
   initialPage,
   initialFilters,
+  v3 = false,
 }: BrowseV2ViewProps) {
   const router = useRouter();
   const [searchResults, setSearchResults] = useState<MediaItem[]>([]);
@@ -123,10 +126,10 @@ export default function BrowseV2View({
 
   return (
     <FilterProvider initialFilters={initialFilters}>
-      <div className="px-4 sm:px-5 py-4 pb-8 w-full min-w-0">
+      <div className={`${v3 ? 'v3-gutter' : 'px-4 sm:px-5'} py-4 pb-8 w-full min-w-0`}>
 
         {/* Page header */}
-        <div className="mb-4 flex items-center gap-2.5 min-w-0">
+        <div className={`mb-4 flex items-center gap-2.5 min-w-0 ${v3 && !(isSearchMode && activeQuery) ? 'hidden' : ''}`}>
           <span
             className="h-5 w-1 shrink-0 rounded-full"
             style={{ backgroundColor: mediaTheme.icon }}
