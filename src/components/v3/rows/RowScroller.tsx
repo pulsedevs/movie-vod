@@ -43,7 +43,7 @@ export default function RowScroller({ title, href, action, gap = 'gap-4 md:gap-5
 
   return (
     <section className="group/row relative py-4 md:py-5">
-      <div className="v3-gutter mb-3 flex items-center justify-between md:mb-4">
+      <div className="v3-gutter mb-1 flex items-center justify-between md:mb-2">
         {href ? (
           <Link href={href} className="flex items-center gap-1 transition-opacity hover:opacity-80">
             {heading}
@@ -56,7 +56,8 @@ export default function RowScroller({ title, href, action, gap = 'gap-4 md:gap-5
       </div>
 
       <div className="relative">
-        <div ref={ref} onScroll={measure} className={`v3-scroller v3-gutter flex overflow-x-auto pb-6 pt-1 ${gap}`}>
+        {/* pt-3: a scrolling row clips whatever rises above it, and a hovered card lifts ~9px. */}
+        <div ref={ref} onScroll={measure} className={`v3-scroller v3-gutter flex overflow-x-auto pb-6 pt-3 ${gap}`}>
           {children}
           <span aria-hidden className="w-px shrink-0" />
         </div>
