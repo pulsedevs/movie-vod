@@ -167,13 +167,8 @@ export default function HeroCarouselV3({ mediaType = 'movie', short = false }: H
               )}
             </div>
 
-            {!short && (
-              <p className="mb-7 line-clamp-3 max-w-[560px] text-base leading-relaxed text-white/85 md:text-lg">
-                {item.overview}
-              </p>
-            )}
-
-            <div className={`flex items-center gap-3 ${short ? 'mt-5' : ''}`}>
+            {/* No overview here: the hero stays clean (logo, facts, buttons); it lives on the details page. */}
+            <div className="mt-5 flex items-center gap-3">
               <Link
                 href={watchHref(item.media_type === 'movie' ? 'movie' : 'tv', item.id)}
                 className="flex items-center gap-2 rounded-full bg-white px-7 py-3 text-base font-semibold text-black shadow-[0_8px_30px_rgba(255,255,255,0.18)] transition hover:scale-[1.03] hover:bg-white/90 active:scale-[0.98]"
