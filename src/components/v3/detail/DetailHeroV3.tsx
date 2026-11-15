@@ -45,6 +45,39 @@ interface DetailHeroV3Props {
   playLabel?: string;
 }
 
+/** The overview, 3 lines with "Read more" when it is longer (like cinejoy's). */
+function Overview({ text }: { text: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [open, setOpen] = useState(false);
+  const [long, setLong] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setLong(el.scrollHeight > el.clientHeight + 2);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [text]);
+  return (
+    <div className="max-w-[620px]">
+      <p ref={ref} className={`text-base leading-relaxed text-white/80 md:text-[17px] ${open ? '' : 'line-clamp-3'}`}>
+        {text}
+      </p>
+      {(long || open) && (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="mt-1.5 text-sm font-semibold text-white/60 transition hover:text-white"
+        >
+          {open ? 'Show less' : 'Read more'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 const GLASS_BTN =
   'flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur-xl transition hover:bg-white/20';
 
@@ -156,7 +189,9 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
         </div>
       )}
 
-      <div className="v3-gutter relative z-10 flex min-h-[min(86vh,960px)] flex-col justify-end gap-8 pb-10 pt-28 md:flex-row md:items-end md:justify-between">
+      <div className="v3-gutter relative z-10 flex min-h-[min(86vh,960px)] flex-col justify-end pb-10 pt-28">
+        {/* Bottom of the hero: the text column and the info box side by side, aligned to the top. */}
+        <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
         <div className="max-w-[680px]">
           {logoPath && logoOk ? (
             <>
@@ -166,7 +201,7 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
                 src={`https://image.tmdb.org/t/p/w780${logoPath}`}
                 alt={title}
                 onError={() => setLogoOk(false)}
-                className="mb-4 max-h-[110px] w-auto max-w-[80%] object-contain object-left drop-shadow-[0_4px_24px_rgba(0,0,0,0.5)] md:max-h-[170px] md:max-w-[560px]"
+                className="mb-4 max-h-[110px] w-auto max-w-[80%] object-contain object-left drop-shadow-[0_4px_24px_rgba(0,0,0,0.5)] md:max-h-[144px] md:max-w-[500px]"
               />
             </>
           ) : (
@@ -237,12 +272,12 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
             </p>
           )}
 
-          {overview && <p className="max-w-[620px] text-base leading-relaxed text-white/80 md:text-[17px]">{overview}</p>}
+          {overview && <Overview text={overview} />}
         </div>
 
-        {/* The info box's bottom lines up with the overview's; the network logo hangs below it, in the
-            hero's bottom padding (so the box sits low and covers less of the picture, like cinejoy's). */}
-        <aside className="relative w-full shrink-0 md:w-[280px]">
+        {/* The info box sits 160px below the top of the logo (like cinejoy's), so a long overview or a
+            tall logo never pushes it down out of view; the network logo hangs just below it. */}
+        <aside className="relative w-full shrink-0 md:mt-40 md:w-[280px]">
           {info.length > 0 && (
             <dl className="overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.04] text-xs backdrop-blur-sm">
               {info.map((row, i) => (
@@ -277,6 +312,7 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
             </div>
           )}
         </aside>
+        </div>
       </div>
 
       {trailer && trailerKey && <TrailerModal youtubeKey={trailerKey} title={title} onClose={() => setTrailer(false)} />}
