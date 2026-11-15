@@ -70,6 +70,7 @@ export default function GlassNav({ scrolled = false }: { scrolled?: boolean }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
   const onDetail = /^\/(movie|tv)\//.test(pathname);
+  const onSearch = pathname === '/search' || pathname.startsWith('/search/');
   const [trailersOn, setTrailersOn] = useTrailersPref();
 
   // The pill moves on the click, not when the next page has loaded.
@@ -164,7 +165,10 @@ export default function GlassNav({ scrolled = false }: { scrolled?: boolean }) {
             <Link
               href="/search"
               aria-label="Search"
-              className="relative z-10 flex h-9 w-9 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+              aria-current={onSearch ? 'page' : undefined}
+              className={`relative z-10 flex h-9 w-9 items-center justify-center rounded-full transition ${
+                onSearch ? 'bg-white text-black shadow-[0_2px_8px_rgba(0,0,0,0.35),0_0_16px_1px_rgba(255,255,255,0.18)]' : 'text-white/80 hover:bg-white/10 hover:text-white'
+              }`}
             >
               <Search className="h-[18px] w-[18px]" />
             </Link>
@@ -207,7 +211,8 @@ export default function GlassNav({ scrolled = false }: { scrolled?: boolean }) {
           <Link
             href="/search"
             aria-label="Search"
-            className={`pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full text-white md:hidden ${GLASS}`}
+            aria-current={onSearch ? 'page' : undefined}
+            className={`pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full md:hidden ${onSearch ? 'bg-white text-black' : `text-white ${GLASS}`}`}
           >
             <Search className="h-[18px] w-[18px]" />
           </Link>

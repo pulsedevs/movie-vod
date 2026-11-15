@@ -7,11 +7,14 @@ interface AmbientValue {
   palette: Palette;
   /** Take the background's colours from an image (a small TMDB backdrop is plenty). */
   setFromImage: (url: string | null | undefined) => void;
+  /** Set the colours directly (a page with its own mood, e.g. search). */
+  setPalette: (p: Palette) => void;
 }
 
 const AmbientCtx = createContext<AmbientValue>({
   palette: DEFAULT_PALETTE,
   setFromImage: () => {},
+  setPalette: () => {},
 });
 
 export function AmbientProvider({ children }: { children: React.ReactNode }) {
@@ -35,7 +38,12 @@ export function AmbientProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {});
   }, []);
 
-  const value = useMemo(() => ({ palette, setFromImage }), [palette, setFromImage]);
+  const setDirect = useCallback((p: Palette) => {
+    latest.current = ''; // an image still being read must not override it
+    setPalette(p);
+  }, []);
+
+  const value = useMemo(() => ({ palette, setFromImage, setPalette: setDirect }), [palette, setFromImage, setDirect]);
   return <AmbientCtx.Provider value={value}>{children}</AmbientCtx.Provider>;
 }
 
@@ -49,6 +57,16 @@ export function AmbientFrom({ image }: { image: string | null | undefined }) {
   useEffect(() => {
     setFromImage(image);
   }, [image, setFromImage]);
+  return null;
+}
+
+/** Drop into a page to give the background fixed colours; back to the default when it leaves. */
+export function AmbientPalette({ palette }: { palette: Palette }) {
+  const { setPalette } = useAmbient();
+  useEffect(() => {
+    setPalette(palette);
+    return () => setPalette(DEFAULT_PALETTE);
+  }, [palette, setPalette]);
   return null;
 }
 

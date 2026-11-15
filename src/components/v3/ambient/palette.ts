@@ -20,6 +20,14 @@ export const DEFAULT_PALETTE: Palette = {
   accent: [0.42, 0.3, 0.62],
 };
 
+/** BoredFlix yellow (the couch): amber waves with an orange second tone, for the search page. */
+export const YELLOW_PALETTE: Palette = {
+  base: [0.035, 0.026, 0.008],
+  primary: [0.46, 0.31, 0.03],
+  secondary: [0.38, 0.17, 0.02],
+  accent: [0.92, 0.7, 0.14],
+};
+
 function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);

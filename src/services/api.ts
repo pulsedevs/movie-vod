@@ -263,6 +263,26 @@ export async function getSimilarTvShows(tvId: string | number, page = 1): Promis
   }
 }
 
+// --- Trending movies and shows together (TMDB /trending/all) - the search page's "Trending Today". ---
+export async function getTrendingAll(timeWindow: 'day' | 'week' = 'day', pages = 1): Promise<MediaItem[]> {
+  const revalidate = timeWindow === 'day' ? REVALIDATE_DAY : REVALIDATE_WEEK;
+  const lists = await Promise.all(
+    Array.from({ length: pages }, (_, i) =>
+      fetchFromTMDB<{ results?: MediaItem[] }>(`/trending/all/${timeWindow}?page=${i + 1}`, revalidate)
+        .then((d) => d.results ?? [])
+        .catch(() => [] as MediaItem[]),
+    ),
+  );
+  const seen = new Set<string>();
+  const items = lists.flat().filter((i) => {
+    const k = `${i.media_type}-${i.id}`;
+    if (seen.has(k) || (i.media_type !== 'movie' && i.media_type !== 'tv') || !i.poster_path) return false;
+    seen.add(k);
+    return true;
+  });
+  return filterBlacklistedContent(items);
+}
+
 // --- "You Might Also Like": TMDB recommendations (what viewers of this title also watch), which
 // match far better than /similar (shared keywords/genres); /similar only when there are none. ---
 export async function getRecommendedMovies(movieId: string | number): Promise<Movie[]> {

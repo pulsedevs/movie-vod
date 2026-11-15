@@ -1,4 +1,5 @@
 import { getHomeLayout } from '@/utils/homeLayout';
+import { isV3 } from '@/utils/uiSkin';
 
 /** Whether the current URL should use the 3-column v2 shell (sidebar + main + library). */
 export function isV2ShellPath(pathname: string): boolean {
@@ -7,6 +8,8 @@ export function isV2ShellPath(pathname: string): boolean {
   if (pathname.startsWith('/movie-preview/') || pathname.startsWith('/tv-preview/')) return true;
   if (getHomeLayout() !== 'v2') return false;
   if (pathname === '/') return true;
+  // v3 has its own search page inside the shell.
+  if (isV3() && pathname === '/search') return true;
   return (
     pathname.startsWith('/browse/') ||
     pathname === '/library' ||
