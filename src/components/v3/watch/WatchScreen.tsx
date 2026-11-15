@@ -8,6 +8,19 @@ import type { StreamSource } from '@/types';
 import LemurVodPlayer from '@/components/player/LemurVodPlayer';
 import MoviePlayer from '@/components/player/MoviePlayer';
 import { readContinueWatching, writeContinueWatching } from '@/utils/libraryStorage';
+import '../v3.css';
+
+/** The v3 fonts (this page sits outside the v3 shell that normally loads them). */
+const Fonts = () => (
+  <>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800&display=swap"
+      precedence="default"
+    />
+  </>
+);
 
 interface WatchScreenProps {
   kind: 'movie' | 'tv';
@@ -100,6 +113,7 @@ export default function WatchScreen(props: WatchScreenProps) {
   if (missing && kind === 'tv') {
     return (
       <div className="v3-root fixed inset-0 overflow-y-auto bg-black text-white [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <Fonts />
         <div className="sticky top-0 z-10 bg-gradient-to-b from-black via-black/80 to-transparent px-[18px] pb-6 pt-3.5">{header}</div>
         <div className="mx-auto max-w-[1400px] px-4 pb-10">
           <MoviePlayer
@@ -120,6 +134,7 @@ export default function WatchScreen(props: WatchScreenProps) {
 
   return (
     <div className="v3-root fixed inset-0 bg-black">
+      <Fonts />
       <LemurVodPlayer
         key={`${kind}:${tmdbId}:${season ?? ''}:${episode ?? ''}`}
         tmdbId={tmdbId}

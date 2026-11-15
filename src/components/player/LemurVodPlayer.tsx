@@ -84,7 +84,31 @@ const prefLang = (): string => {
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 /** The settings panel: its first page (tiles), or one of its lists. */
-type Panel = '' | 'main' | 'quality' | 'audio' | 'subs' | 'speed';
+type Panel = '' | 'main' | 'quality' | 'audio' | 'subs' | 'speed' | 'subStyle';
+
+/** How subtitles look and when they show; kept in this browser. */
+interface SubStyle {
+  delay: number;        // seconds; + shows them later, - earlier
+  font: 'default' | 'classic' | 'montserrat';
+  size: number;         // % of the normal size
+  raise: number;        // % of the player's height to lift them by
+  bg: boolean;          // the dark box behind the text (else an outline)
+  color: string;
+}
+const SUB_STYLE_KEY = 'lp:subStyle';
+const SUB_STYLE_DEFAULT: SubStyle = { delay: 0, font: 'default', size: 100, raise: 0, bg: true, color: '#ffffff' };
+const SUB_COLORS = ['#ffffff', '#80b1fa', '#e2e535', '#22c55e'];
+const SUB_FONTS: { id: SubStyle['font']; label: string; css?: string }[] = [
+  { id: 'default', label: 'Default' },
+  { id: 'classic', label: 'Classic', css: 'Arial, Helvetica, sans-serif' },
+  { id: 'montserrat', label: 'Montserrat', css: "'Montserrat', sans-serif" },
+];
+const readSubStyle = (): SubStyle => {
+  try {
+    const v = JSON.parse(localStorage.getItem(SUB_STYLE_KEY) || '{}');
+    return { ...SUB_STYLE_DEFAULT, ...(v && typeof v === 'object' ? v : {}) };
+  } catch { return SUB_STYLE_DEFAULT; }
+};
 const SKIP = 10;                       // seconds per ←/→ and the skip buttons
 const HIDE_AFTER = 2600;               // ms of stillness before controls fade (while playing)
 /** `movie:{tmdb}` or `tv:{tmdb}:{season}:{episode}` — where "resume where you left off" is kept. */
@@ -133,6 +157,7 @@ const I = {
   check: <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />,
   chevL: <path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />,
   chevR: <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />,
+  textSize: <path d="M9 4v3h5v12h3V7h5V4H9zm-6 8h3v7h3v-7h3V9H3v3z" />,
 };
 
 /** A small icon inside menus and tiles. */
@@ -216,6 +241,8 @@ const CSS = `
 .lp-item:hover{background:rgba(255,255,255,.07)}
 .lp-item:disabled{opacity:.4;cursor:not-allowed}
 .lp-item:disabled:hover{background:none}
+.lp-item.lp-flat{padding:0}
+.lp-item.lp-flat:hover{background:none}
 .lp-grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lp-sub{color:rgba(255,255,255,.5);font-size:13px;font-weight:500;white-space:nowrap}
 .lp-ico{color:rgba(255,255,255,.75);flex:none}
@@ -241,8 +268,35 @@ const CSS = `
 .lp-txt{width:auto;padding:0 12px;font-size:14px;font-weight:600}
 .lp-verbtn{max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;border:1px solid rgba(255,255,255,.2)}
 .lp-toast{position:absolute;top:96px;left:50%;transform:translateX(-50%);z-index:3;background:rgba(0,0,0,.5);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.1);padding:9px 16px;border-radius:999px;font-size:13px;font-weight:600;pointer-events:none;white-space:nowrap}
-.lp-cues{position:absolute;left:0;right:0;bottom:7%;display:flex;justify-content:center;padding:0 6%;pointer-events:none;transition:bottom .3s ease-out;z-index:1}
-.lp-cues.up{bottom:112px}
+.lp-cues{position:absolute;left:0;right:0;bottom:calc(7% + var(--raise,0%));display:flex;justify-content:center;padding:0 6%;pointer-events:none;transition:bottom .3s ease-out;z-index:1}
+.lp-cues.up{bottom:calc(112px + var(--raise,0%))}
+.lp-cues span.lp-nobg{background:none;backdrop-filter:none;-webkit-backdrop-filter:none;text-shadow:0 0 3px #000,0 0 3px #000,0 1px 2px #000,0 0 6px rgba(0,0,0,.8)}
+.lp-phead .lp-plink{width:auto;height:auto;margin:0 0 0 auto;padding:6px 10px;font-size:14px;font-weight:600;color:rgba(255,255,255,.6)}
+.lp-phead .lp-plink:hover{color:#fff}
+.lp-field{margin:14px 0}
+.lp-flabel{display:flex;justify-content:space-between;align-items:center;font-size:16px;font-weight:600;margin-bottom:12px}
+.lp-fval{font-size:14px;font-weight:600;color:rgba(255,255,255,.8)}
+.lp-slider{-webkit-appearance:none;appearance:none;display:block;width:100%;height:4px;margin:8px 0;border-radius:999px;cursor:pointer;background:linear-gradient(#fff,#fff) 0 0/var(--v,0%) 100% no-repeat,rgba(255,255,255,.2)}
+.lp-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;border:4px solid #1a1a1a;box-shadow:0 0 0 1px #fff}
+.lp-slider::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:#fff;border:4px solid #1a1a1a;box-shadow:0 0 0 1px #fff}
+.lp-delay{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}
+.lp-dbtn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;height:48px;border:0;border-radius:8px;background:rgba(255,255,255,.07);color:#fff;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.lp-dbtn:hover{background:rgba(255,255,255,.13)}
+.lp-dnum{display:flex;align-items:center;justify-content:center;gap:2px;height:48px;border-radius:8px;background:rgba(255,255,255,.07);font-size:16px;font-weight:700;cursor:text}
+.lp-dnum input{width:52px;background:none;border:0;color:#fff;font:inherit;text-align:center;outline:none;-moz-appearance:textfield;appearance:textfield}
+.lp-dnum input::-webkit-inner-spin-button,.lp-dnum input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.lp-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:10px;background:rgba(255,255,255,.07)}
+.lp-seg button{height:34px;border:0;border-radius:7px;background:none;color:rgba(255,255,255,.6);font-size:14px;font-weight:600;cursor:pointer}
+.lp-seg button.on{background:rgba(255,255,255,.16);color:#fff}
+.lp-colors{display:flex;align-items:center;justify-content:space-between}
+.lp-swatches{display:flex;align-items:center;gap:4px}
+.lp-sw{position:relative;display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:0;border-radius:8px;background:none;color:#fff;cursor:pointer}
+.lp-sw.on{background:rgba(255,255,255,.14)}
+.lp-sw > span{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;color:#111}
+.lp-swc > span{color:#fff}
+.lp-sw input[type=color]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
+.lp-reset{display:block;margin:6px auto 0;background:none;border:0;color:rgba(255,255,255,.55);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:6px 10px;border-radius:8px}
+.lp-reset:hover{color:#fff;background:rgba(255,255,255,.07)}
 .lp-cues span{background:rgba(0,0,0,.45);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:#fff;font-size:clamp(15px,2.2vw,32px);font-weight:500;line-height:1.35;padding:.3em .75em;border-radius:8px;text-align:center;white-space:pre-line;text-shadow:0 1px 2px rgba(0,0,0,.6)}
 .lp-wait{width:100%;aspect-ratio:16/9;background:#0b0d10;color:#eef1f5;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;text-align:center;padding:20px}
 @media (max-width:640px){
@@ -294,6 +348,16 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
   const [panel, setPanel] = useState<Panel>('');
   const panelRef = useRef<Panel>('');
   const [remain, setRemain] = useState(false);          // the clock shows time left instead
+  const [subStyle, setSubStyleState] = useState<SubStyle>(SUB_STYLE_DEFAULT);
+  useEffect(() => { setSubStyleState(readSubStyle()); }, []);
+  const setSubStyle = useCallback((patch: Partial<SubStyle>) => {
+    setSubStyleState(prev => {
+      const next = { ...prev, ...patch };
+      try { localStorage.setItem(SUB_STYLE_KEY, JSON.stringify(next)); } catch { /* private mode */ }
+      return next;
+    });
+  }, []);
+  const subDelay = subStyle.delay;
   const [pipOk, setPipOk] = useState(false);
   const [resumed, setResumed] = useState<number | null>(null);
   const [pickSid, setPickSid] = useState<string>('');  // viewer-picked copy (stream id); '' = by language
@@ -504,9 +568,20 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
     const tl = v.textTracks;
     let bound: TextTrack | null = null;
     const onCue = () => {
+      if (subDelay) {
+        // Shifted: the cues active at (now - delay). The track holds cues well ahead of playback.
+        const t = v.currentTime - subDelay;
+        const all = bound?.cues;
+        const on: TextTrackCue[] = [];
+        if (all) for (let i = 0; i < all.length; i++) { const c = all[i]; if (c.startTime <= t && c.endTime > t) on.push(c); }
+        setCue(on.map(cueText).filter(Boolean).join('\n'));
+        return;
+      }
       const cues = bound?.activeCues;
       setCue(cues && cues.length ? Array.from(cues).map(cueText).filter(Boolean).join('\n') : '');
     };
+    // cuechange only fires on the track's own timing, so a delay needs its own clock.
+    const tick = subDelay ? setInterval(onCue, 100) : null;
     const bind = () => {
       const t = subSel >= 0 ? subTextTracks(v).find(x => x.mode === 'hidden') || null : null;
       if (t === bound) return;
@@ -519,12 +594,13 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
     tl.addEventListener('change', bind);
     tl.addEventListener('addtrack', bind);
     return () => {
+      if (tick) clearInterval(tick);
       bound?.removeEventListener('cuechange', onCue);
       tl.removeEventListener('change', bind);
       tl.removeEventListener('addtrack', bind);
       setCue('');
     };
-  }, [state.s, subSel]);
+  }, [state.s, subSel, subDelay]);
 
   // ── controls visibility ───────────────────────────────────────────────────────────────────────
   const wake = useCallback(() => {
@@ -635,12 +711,15 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
   const audioName = audioTracks.find(t => t.id === audioSel)?.label || currentVer?.label || 'Default';
   const subName = subSel >= 0 ? (subTracks.find(t => t.id === subSel)?.label || 'On') : 'Off';
   const speedName = (x: number) => (x === 1 ? 'Normal' : `${x}×`);
-  const head = (label: string) => (
+  const head = (label: string, extra?: ReactNode, back: Panel = 'main') => (
     <div className="lp-phead">
-      <button type="button" onClick={() => setPanel('main')} aria-label="Back to settings"><Ico d={I.chevL} size={22} /></button>
+      <button type="button" onClick={() => setPanel(back)} aria-label="Back"><Ico d={I.chevL} size={22} /></button>
       {label}
+      {extra}
     </div>
   );
+  const sliderFill = (val: number, min: number, max: number) => ({ '--v': `${((val - min) / (max - min)) * 100}%` }) as CSSProperties;
+  const nudgeDelay = (d: number) => setSubStyle({ delay: Math.round(Math.min(20, Math.max(-20, subDelay + d)) * 10) / 10 });
   const item = (key: string | number, label: ReactNode, on: boolean, onClick: () => void, extra?: ReactNode, disabled?: boolean) => (
     <button type="button" key={key} aria-pressed={on} className="lp-item" onClick={onClick} disabled={disabled}>
       <span className="lp-grow">{label}</span>
@@ -661,9 +740,89 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
       {audioTracks.map(t => item(t.id, t.label, t.id === audioSel, () => chooseAudio(t)))}
     </>;
     if (panel === 'subs') return <>
-      {head('Subtitles')}
+      {head('Subtitles', <button type="button" className="lp-plink" onClick={() => setPanel('subStyle')}>Customize</button>)}
       {item('off', 'Off', subSel < 0, () => chooseSub(-1))}
       {subTracks.map(t => item(t.id, t.label, t.id === subSel, () => chooseSub(t.id)))}
+    </>;
+    if (panel === 'subStyle') return <>
+      {head('Subtitle settings')}
+      <div className="lp-field">
+        <div className="lp-flabel">Subtitle delay</div>
+        <input
+          type="range" min={-20} max={20} step={0.1} value={subDelay} aria-label="Subtitle delay (seconds)"
+          className="lp-slider" style={sliderFill(subDelay, -20, 20)}
+          onChange={(e) => setSubStyle({ delay: Math.round(parseFloat(e.target.value) * 10) / 10 })}
+        />
+        <div className="lp-delay">
+          <button type="button" className="lp-dbtn" onClick={() => nudgeDelay(-0.1)} title="Subtitles come too late: show them earlier">
+            <Ico d={I.chevL} size={14} />Heard audio
+          </button>
+          <label className="lp-dnum">
+            <input
+              type="number" min={-20} max={20} step={0.1} value={subDelay} aria-label="Subtitle delay in seconds"
+              onChange={(e) => { const n = parseFloat(e.target.value); if (isFinite(n)) setSubStyle({ delay: Math.min(20, Math.max(-20, n)) }); }}
+            />
+            <span className="lp-sub">s</span>
+          </label>
+          <button type="button" className="lp-dbtn" onClick={() => nudgeDelay(0.1)} title="Subtitles come too early: show them later">
+            <Ico d={I.chevR} size={14} />Saw caption
+          </button>
+        </div>
+      </div>
+      <div className="lp-sep" />
+      <div className="lp-field">
+        <div className="lp-flabel">Font</div>
+        <div className="lp-seg" role="radiogroup" aria-label="Subtitle font">
+          {SUB_FONTS.map(f => (
+            <button
+              type="button" key={f.id} role="radio" aria-checked={subStyle.font === f.id}
+              className={subStyle.font === f.id ? 'on' : ''} style={f.css ? { fontFamily: f.css } : undefined}
+              onClick={() => setSubStyle({ font: f.id })}
+            >{f.label}</button>
+          ))}
+        </div>
+      </div>
+      <div className="lp-field">
+        <div className="lp-flabel">Text size<span className="lp-fval">{subStyle.size}%</span></div>
+        <input
+          type="range" min={50} max={200} step={5} value={subStyle.size} aria-label="Subtitle size"
+          className="lp-slider" style={sliderFill(subStyle.size, 50, 200)}
+          onChange={(e) => setSubStyle({ size: parseInt(e.target.value, 10) })}
+        />
+      </div>
+      <div className="lp-field">
+        <div className="lp-flabel">Position<span className="lp-fval">{subStyle.raise ? `+${subStyle.raise}%` : 'Default'}</span></div>
+        <input
+          type="range" min={0} max={50} step={1} value={subStyle.raise} aria-label="Raise subtitles"
+          className="lp-slider" style={sliderFill(subStyle.raise, 0, 50)}
+          onChange={(e) => setSubStyle({ raise: parseInt(e.target.value, 10) })}
+        />
+      </div>
+      <button type="button" role="switch" aria-checked={subStyle.bg} className="lp-item lp-flat" onClick={() => setSubStyle({ bg: !subStyle.bg })}>
+        <span className="lp-grow">Background</span>
+        <span className={`lp-switch ${subStyle.bg ? 'on' : ''}`} aria-hidden="true" />
+      </button>
+      <div className="lp-field lp-colors">
+        <div className="lp-flabel" style={{ marginBottom: 0 }}>Color</div>
+        <div className="lp-swatches">
+          {SUB_COLORS.map(c => (
+            <button
+              type="button" key={c} className={`lp-sw ${subStyle.color.toLowerCase() === c ? 'on' : ''}`}
+              aria-label={`Subtitle colour ${c}`} aria-pressed={subStyle.color.toLowerCase() === c}
+              onClick={() => setSubStyle({ color: c })}
+            >
+              <span style={{ background: c }}>{subStyle.color.toLowerCase() === c && <Ico d={I.check} size={16} />}</span>
+            </button>
+          ))}
+          <label className={`lp-sw lp-swc ${SUB_COLORS.includes(subStyle.color.toLowerCase()) ? '' : 'on'}`} title="Custom colour">
+            <span style={SUB_COLORS.includes(subStyle.color.toLowerCase()) ? undefined : { background: subStyle.color }}>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M20.71 5.63 18.37 3.3a1 1 0 0 0-1.41 0l-3.12 3.12-1.93-1.91-1.41 1.41 1.42 1.42L3 16.25V21h4.75l8.92-8.92 1.42 1.42 1.41-1.41-1.92-1.92 3.12-3.12a1 1 0 0 0 .01-1.42zM6.92 19 5 17.08l8.06-8.06 1.92 1.92L6.92 19z" /></svg>
+            </span>
+            <input type="color" value={subStyle.color} aria-label="Custom subtitle colour" onChange={(e) => setSubStyle({ color: e.target.value })} />
+          </label>
+        </div>
+      </div>
+      <button type="button" className="lp-reset" onClick={() => setSubStyle(SUB_STYLE_DEFAULT)}>Reset to default</button>
     </>;
     if (panel === 'speed') return <>
       {head('Playback speed')}
@@ -688,6 +847,11 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
           <Ico d={I.subs} className="lp-ico" />
           <span className="lp-grow">Enable Subtitles</span>
           <span className={`lp-switch ${subSel >= 0 ? 'on' : ''}`} aria-hidden="true" />
+        </button>
+        <button type="button" className="lp-item" onClick={() => setPanel('subStyle')}>
+          <Ico d={I.textSize} className="lp-ico" />
+          <span className="lp-grow">Subtitle settings</span>
+          <Ico d={I.chevR} size={20} className="lp-ico" />
         </button>
       </>}
     </>;
@@ -830,7 +994,24 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
         </div>
       )}
 
-      {cue && <div className={`lp-cues ${showUi ? 'up' : ''}`} aria-live="off"><span>{cue}</span></div>}
+      {subStyle.font === 'montserrat' && (
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&display=swap" precedence="default" />
+      )}
+      {cue && (
+        <div
+          className={`lp-cues ${showUi ? 'up' : ''}`} aria-live="off"
+          style={{ '--raise': `${subStyle.raise}%` } as CSSProperties}
+        >
+          <span
+            className={subStyle.bg ? '' : 'lp-nobg'}
+            style={{
+              color: subStyle.color,
+              fontFamily: SUB_FONTS.find(f => f.id === subStyle.font)?.css,
+              fontSize: `calc(clamp(15px, 2.2vw, 32px) * ${subStyle.size / 100})`,
+            }}
+          >{cue}</span>
+        </div>
+      )}
 
       {resumed != null && <div className="lp-toast">Resumed from {fmt(resumed)}</div>}
 
@@ -888,7 +1069,7 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
             {subTracks.length > 0 && (
               <Btn onClick={() => openPanel('subs')} label="Subtitles (c)" active={panel === 'subs'} expanded={panel === 'subs'}>{I.subs}</Btn>
             )}
-            <Btn onClick={() => openPanel('main')} label="Settings" active={panel === 'main' || panel === 'audio' || panel === 'speed'} expanded={panel !== ''}>{I.gear}</Btn>
+            <Btn onClick={() => openPanel('main')} label="Settings" active={panel === 'main' || panel === 'audio' || panel === 'speed' || panel === 'subStyle'} expanded={panel !== ''}>{I.gear}</Btn>
             <Btn onClick={toggleFs} label={fs ? 'Exit fullscreen (f)' : 'Fullscreen (f)'}>{fs ? I.fsExit : I.fs}</Btn>
           </div>
         </div>
