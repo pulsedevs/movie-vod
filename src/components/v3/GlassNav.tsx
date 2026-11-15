@@ -130,7 +130,7 @@ export default function GlassNav({ scrolled = false }: { scrolled?: boolean }) {
               </button>
             )}
             <Link href="/" aria-label="Home" className="flex items-center">
-              <BoredFlixLogoStatic className="block h-10 w-auto md:h-12" />
+              <BoredFlixLogoStatic className="block h-11 w-auto md:h-13" />
             </Link>
           </div>
 
