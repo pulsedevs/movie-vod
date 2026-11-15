@@ -1,7 +1,7 @@
 // Enhanced service worker for caching assets and improving performance
 // Version: 1.3.1 - Ad Network Removed (couphaithuph.net)
 
-const CACHE_VERSION = 'v1.3.1';
+const CACHE_VERSION = 'v1.3.2';
 const CACHE_NAME = `boredflix-cache-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `runtime-cache-${CACHE_VERSION}`;
 const IMAGE_CACHE = `image-cache-${CACHE_VERSION}`;
@@ -166,8 +166,12 @@ self.addEventListener('fetch', (event) => {
       event.respondWith(
         fetch(event.request)
           .then(response => {
+            // An <img> without crossorigin gets an opaque response (status 0), which isValidResponse
+            // rejects. Answering with an empty cache miss made the browser fail the image (every
+            // w780/original title logo broke once this worker was installed): fall back to the
+            // network response itself instead.
             if (!isValidResponse(response)) {
-              return caches.match(event.request);
+              return caches.match(event.request).then(cached => cached || response);
             }
             
             // Cache the fresh response with sanitized key
