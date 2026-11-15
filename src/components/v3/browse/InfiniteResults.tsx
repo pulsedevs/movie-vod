@@ -130,7 +130,8 @@ export default function InfiniteResults({
 
   return (
     <div>
-      {items.length > 0 && <div className={gridClassName}>{items.map((item, i) => <div key={keyOf(item)}>{renderItem(item, i)}</div>)}</div>}
+      {/* v3-cascade: a new result set (new filters) comes in poster by poster. */}
+      {items.length > 0 && <div className={`${gridClassName} v3-cascade`}>{items.map((item, i) => <div key={keyOf(item)}>{renderItem(item, i)}</div>)}</div>}
 
       {restarting && (
         <div className={gridClassName} aria-hidden>

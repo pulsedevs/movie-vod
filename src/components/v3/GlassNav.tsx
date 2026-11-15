@@ -179,7 +179,7 @@ export default function GlassNav({ scrolled = false }: { scrolled?: boolean }) {
                 <Settings className="h-[18px] w-[18px]" />
               </button>
               {settingsOpen && (
-                <div className={`absolute right-0 top-full mt-3 flex w-max flex-col gap-2 rounded-2xl p-3 ${GLASS} bg-black/60`}>
+                <div className={`v3-pop v3-cascade absolute right-0 top-full mt-3 flex w-max flex-col gap-2 rounded-2xl p-3 ${GLASS} bg-black/60`}>
                   <div className="flex items-center justify-between gap-6 px-1 py-1 text-sm text-white/85">
                     <span>Background trailers</span>
                     <button

@@ -198,6 +198,7 @@ export default function TvWatchV3(props: TvWatchV3Props) {
         <RowScroller
           title={<SeasonPicker seasons={tabs} value={season} onChange={changeSeason} />}
           gap="gap-6"
+          cascade
           action={toolbar}
           resetKey={`${season}|${q}|${newest ? 1 : 0}|${loading ? 1 : 0}`}
         >
@@ -253,7 +254,11 @@ export default function TvWatchV3(props: TvWatchV3Props) {
                 </>
               );
               return (
-                <div key={ep.episode_number} className={`group/ep flex w-72 shrink-0 flex-col gap-3 md:w-80 ${ok ? '' : 'opacity-50'}`}>
+                // Keyed by season + order too, so a new season / order remounts the cards and they cascade in.
+                <div
+                  key={`${s}-${newest ? 'n' : 'o'}-${ep.episode_number}`}
+                  className={`group/ep flex w-72 shrink-0 flex-col gap-3 md:w-80 ${ok ? '' : 'opacity-50'}`}
+                >
                   <div
                     className={`relative aspect-video overflow-hidden rounded-xl border border-white/5 bg-black/20 transition-all duration-300 ${
                       ok ? 'group-hover/ep:scale-105 group-hover/ep:ring-1 group-hover/ep:ring-white/50' : ''

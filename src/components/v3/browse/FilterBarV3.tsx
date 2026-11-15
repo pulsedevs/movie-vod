@@ -98,7 +98,9 @@ function Pills({ defs, up, onClear }: { defs: PillDef[]; up?: boolean; onClear?:
                 // Docked, the menu sits inside the bar's own backdrop blur, where a second blur has
                 // nothing to work on: it needs a near-solid background to stay readable.
                 className={`absolute z-50 max-h-[302px] w-full min-w-[180px] max-w-[calc(100vw-1.5rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/10 p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-[28px] backdrop-saturate-[1.8] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
-                  up ? 'bottom-full mb-2 bg-[rgba(18,18,20,0.94)]' : 'top-full mt-2 bg-[rgba(20,20,20,0.6)]'
+                  up
+                    ? 'v3-pop-up v3-cascade v3-cascade-up bottom-full mb-2 bg-[rgba(18,18,20,0.94)]'
+                    : 'v3-pop v3-cascade top-full mt-2 bg-[rgba(20,20,20,0.6)]'
                 } ${d.alignRight ? 'right-0' : 'left-0'}`}
               >
                 {d.options.map((o) => {

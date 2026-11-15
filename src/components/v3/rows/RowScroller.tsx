@@ -13,11 +13,13 @@ interface RowScrollerProps {
   gap?: string;
   /** When this changes (a new list: season, search, sort), the row goes back to its start. */
   resetKey?: string | number;
+  /** Cards come in one after another (see .v3-cascade). */
+  cascade?: boolean;
   children: React.ReactNode;
 }
 
 /** A titled row that scrolls sideways (snap, no scrollbar), with arrow buttons on hover (desktop). */
-export default function RowScroller({ title, href, action, gap = 'gap-4 md:gap-5', resetKey, children }: RowScrollerProps) {
+export default function RowScroller({ title, href, action, gap = 'gap-4 md:gap-5', resetKey, cascade, children }: RowScrollerProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ start: true, end: false });
 
@@ -77,7 +79,7 @@ export default function RowScroller({ title, href, action, gap = 'gap-4 md:gap-5
 
       <div className="relative">
         {/* pt-3: a scrolling row clips whatever rises above it, and a hovered card lifts ~9px. */}
-        <div ref={ref} onScroll={measure} className={`v3-scroller v3-gutter flex overflow-x-auto pb-6 pt-3 ${gap}`}>
+        <div ref={ref} onScroll={measure} className={`v3-scroller v3-gutter flex overflow-x-auto pb-6 pt-3 ${gap} ${cascade ? 'v3-cascade' : ''}`}>
           {children}
           <span aria-hidden className="w-px shrink-0" />
         </div>

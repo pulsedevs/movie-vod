@@ -103,7 +103,7 @@ export default function EpisodesPanel({
             // A mouse wheel scrolls the row sideways.
             if (row.current && Math.abs(e.deltaY) > Math.abs(e.deltaX)) row.current.scrollLeft += e.deltaY;
           }}
-          className="flex gap-4 overflow-x-auto scroll-smooth px-5 py-5 sm:px-14 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="v3-cascade flex gap-4 overflow-x-auto scroll-smooth px-5 py-5 sm:px-14 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {episodes === undefined
             ? Array.from({ length: 5 }, (_, i) => <div key={i} className="h-[236px] w-[256px] shrink-0 animate-pulse rounded-xl bg-white/[0.06]" />)
@@ -140,11 +140,11 @@ export default function EpisodesPanel({
                     current ? 'ring-white/60' : 'ring-white/10'
                   }`;
                   return ok && !current ? (
-                    <Link key={ep.episode_number} href={watchHref('tv', tvId, open, ep.episode_number)} className={`${cls} hover:bg-white/[0.1] hover:ring-white/30`}>
+                    <Link key={`${open}-${ep.episode_number}`} href={watchHref('tv', tvId, open, ep.episode_number)} className={`${cls} hover:bg-white/[0.1] hover:ring-white/30`}>
                       {body}
                     </Link>
                   ) : (
-                    <div key={ep.episode_number} data-current={current || undefined} aria-current={current || undefined} className={`${cls} ${ok ? '' : 'opacity-50'}`}>
+                    <div key={`${open}-${ep.episode_number}`} data-current={current || undefined} aria-current={current || undefined} className={`${cls} ${ok ? '' : 'opacity-50'}`}>
                       {body}
                     </div>
                   );
