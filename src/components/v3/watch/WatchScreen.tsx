@@ -72,15 +72,15 @@ export default function WatchScreen(props: WatchScreenProps) {
         aria-label="Back"
         className="flex h-12 w-12 items-center justify-center rounded-full text-white transition hover:bg-white/10"
       >
-        <ArrowLeft className="h-6 w-6" />
+        <ArrowLeft className="h-8 w-8" />
       </button>
       <Link
         href={detailsHref}
         title={`${title}: details`}
         className="min-w-0 max-w-[56vw] text-center text-white transition hover:opacity-80"
       >
-        <span className="block truncate text-[17px] font-semibold drop-shadow">{title}</span>
-        {subtitle && <span className="block truncate text-[13px] text-white/70">{subtitle}</span>}
+        <span className="block truncate text-base font-medium drop-shadow">{title}</span>
+        {subtitle && <span className="mt-0.5 block truncate text-[13px] text-white/65">{subtitle}</span>}
       </Link>
       <div className="flex justify-end">
         {nextHref && (
