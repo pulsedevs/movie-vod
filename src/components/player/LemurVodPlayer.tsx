@@ -243,13 +243,13 @@ const CSS = `
 @keyframes lpnext{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 .lp-panel{position:absolute;right:32px;bottom:76px;z-index:4;width:343px;max-width:calc(100% - 32px);max-height:calc(100% - 140px);overflow:auto;overscroll-behavior:contain;scrollbar-width:none;background:rgba(15,15,15,.72);backdrop-filter:blur(28px) saturate(1.8);-webkit-backdrop-filter:blur(28px) saturate(1.8);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.5);line-height:1.2}
 .lp-tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-/* Panels open with a quick fade; their rows (and the tiles) cascade in, 25 ms apart. */
-.lp-panel,.lp-eppanel{animation:lppop .18s ease-out backwards}
-.lp-panel>*,.lp-tiles>*{animation:lpcas .3s cubic-bezier(.2,.7,.2,1) backwards}
-.lp-panel>:nth-child(2),.lp-tiles>:nth-child(2){animation-delay:25ms}.lp-panel>:nth-child(3),.lp-tiles>:nth-child(3){animation-delay:50ms}.lp-panel>:nth-child(4),.lp-tiles>:nth-child(4){animation-delay:75ms}.lp-panel>:nth-child(5),.lp-tiles>:nth-child(5){animation-delay:100ms}.lp-panel>:nth-child(6),.lp-tiles>:nth-child(6){animation-delay:125ms}.lp-panel>:nth-child(7),.lp-tiles>:nth-child(7){animation-delay:150ms}.lp-panel>:nth-child(8),.lp-tiles>:nth-child(8){animation-delay:175ms}.lp-panel>:nth-child(9),.lp-tiles>:nth-child(9){animation-delay:200ms}.lp-panel>:nth-child(10),.lp-tiles>:nth-child(10){animation-delay:225ms}.lp-panel>:nth-child(11),.lp-tiles>:nth-child(11){animation-delay:250ms}.lp-panel>:nth-child(12),.lp-tiles>:nth-child(12){animation-delay:275ms}
-.lp-panel>:nth-child(n+13){animation-delay:300ms}
+/* Panels open with a quick fade; their rows (and the tiles) cascade in, 50 ms apart. */
+.lp-panel,.lp-eppanel{animation:lppop .25s ease-out backwards}
+.lp-panel>*,.lp-tiles>*{animation:lpcas .5s cubic-bezier(.2,.7,.2,1) backwards}
+.lp-panel>:nth-child(2),.lp-tiles>:nth-child(2){animation-delay:50ms}.lp-panel>:nth-child(3),.lp-tiles>:nth-child(3){animation-delay:100ms}.lp-panel>:nth-child(4),.lp-tiles>:nth-child(4){animation-delay:150ms}.lp-panel>:nth-child(5),.lp-tiles>:nth-child(5){animation-delay:200ms}.lp-panel>:nth-child(6),.lp-tiles>:nth-child(6){animation-delay:250ms}.lp-panel>:nth-child(7),.lp-tiles>:nth-child(7){animation-delay:300ms}.lp-panel>:nth-child(8),.lp-tiles>:nth-child(8){animation-delay:350ms}.lp-panel>:nth-child(9),.lp-tiles>:nth-child(9){animation-delay:400ms}.lp-panel>:nth-child(10),.lp-tiles>:nth-child(10){animation-delay:450ms}.lp-panel>:nth-child(11),.lp-tiles>:nth-child(11){animation-delay:500ms}.lp-panel>:nth-child(12),.lp-tiles>:nth-child(12){animation-delay:550ms}
+.lp-panel>:nth-child(n+13){animation-delay:600ms}
 @keyframes lppop{from{opacity:0;transform:translateY(6px) scale(.98)}to{opacity:1;transform:none}}
-@keyframes lpcas{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@keyframes lpcas{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
 .lp-tile{display:flex;flex-direction:column;justify-content:center;gap:7px;min-height:80px;min-width:0;padding:14px;text-align:left;color:#fff;font:inherit;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer;transition:background .15s}
 .lp-tile:hover{background:rgba(255,255,255,.1)}
 .lp-tile:disabled{opacity:.4;cursor:default}
