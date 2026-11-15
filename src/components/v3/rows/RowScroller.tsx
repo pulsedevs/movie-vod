@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -11,11 +11,13 @@ interface RowScrollerProps {
   /** Extra control on the right of the title (e.g. an edit button). */
   action?: React.ReactNode;
   gap?: string;
+  /** When this changes (a new list: season, search, sort), the row goes back to its start. */
+  resetKey?: string | number;
   children: React.ReactNode;
 }
 
 /** A titled row that scrolls sideways (snap, no scrollbar), with arrow buttons on hover (desktop). */
-export default function RowScroller({ title, href, action, gap = 'gap-4 md:gap-5', children }: RowScrollerProps) {
+export default function RowScroller({ title, href, action, gap = 'gap-4 md:gap-5', resetKey, children }: RowScrollerProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ start: true, end: false });
 
@@ -24,6 +26,24 @@ export default function RowScroller({ title, href, action, gap = 'gap-4 md:gap-5
     if (!el) return;
     setEdges({ start: el.scrollLeft < 8, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 8 });
   }, []);
+
+  // A new list starts at its first card. Scroll snap would re-snap to the card it was on (a search
+  // hit, the old order), so snapping is off while the row goes back to 0, and on again a frame later.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || resetKey === undefined) return;
+    el.style.scrollSnapType = 'none';
+    el.scrollLeft = 0;
+    const id = requestAnimationFrame(() => {
+      el.scrollLeft = 0;
+      el.style.scrollSnapType = '';
+      measure();
+    });
+    return () => {
+      cancelAnimationFrame(id);
+      el.style.scrollSnapType = '';
+    };
+  }, [resetKey, measure]);
 
   useEffect(() => {
     measure();

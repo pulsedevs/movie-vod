@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as RPointerEvent, ReactNode } from 'react';
 import Hls from 'hls.js';
+import { markWatched } from '@/components/v3/watch/watched';
 
 interface Props {
   /** TMDB id of the film, or of the show when `season` + `episode` are given. */
@@ -540,6 +541,13 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
   useEffect(() => {
     const v = videoRef.current;
     if (!v || state.s !== 'ready') return;
+    // TV: the episode counts as watched once 92 % is behind (end credits) or it ends.
+    let marked = false;
+    const seen = () => {
+      if (marked || !isTv) return;
+      marked = true;
+      markWatched(Number(tmdbId), season!, episode!);
+    };
     const updBuf = () => {
       const b = v.buffered; let end = 0;
       for (let i = 0; i < b.length; i++) if (b.start(i) <= v.currentTime + 0.5 && b.end(i) > end) end = b.end(i);
@@ -548,6 +556,7 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
     const onTime = () => {
       if (!scrubRef.current) setCur(v.currentTime);
       updBuf();
+      if (v.duration > 0 && v.currentTime / v.duration >= 0.92) seen();
       const now = Date.now();
       if (now - lastSave.current > 5000 && v.currentTime > 5) {
         lastSave.current = now;
@@ -564,6 +573,7 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
     const onEnd = () => {
       setEnded(true); setPlaying(false);
       try { localStorage.removeItem(posKey(posId)); } catch { /* ignore */ }
+      seen();
       nextRef.current?.go();                    // TV: on to the next episode
     };
     const pairs: [string, EventListener][] = [
@@ -575,6 +585,7 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
     const onFs = () => setFs(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', onFs);
     return () => { pairs.forEach(([e, f]) => v.removeEventListener(e, f)); document.removeEventListener('fullscreenchange', onFs); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tmdbId/season/episode are what posId is made of
   }, [state.s, posId]);
 
   // ── 4. Subtitles on screen: the chosen text track is 'hidden' (cues load, the browser draws

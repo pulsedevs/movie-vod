@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { MediaItem, StreamSource } from '@/types';
 import type { MovieWithCredits } from '@/lib/detail/movieTypes';
 import type { TvShowWithCredits } from '@/lib/detail/tvTypes';
-import { getMediaLogo, getSimilarMovies, getSimilarTvShows } from '@/services/api';
+import { getMediaLogo, getRecommendedMovies, getRecommendedTvShows } from '@/services/api';
 import { watchHref } from '../watch/links';
 import TvWatchV3 from './TvWatchV3';
 import { loadSeasonDetail } from '@/lib/detail/loadEpisodeDetail';
@@ -33,7 +33,7 @@ type Extra = {
 const fmtRuntime = (min?: number | null) =>
   min ? `${Math.floor(min / 60) ? `${Math.floor(min / 60)}h ` : ''}${min % 60}m` : null;
 const fmtDate = (d?: string) =>
-  d ? new Date(`${d}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+  d ? new Date(`${d}T00:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : null;
 const langName = (x: Extra) =>
   x.spoken_languages?.[0]?.english_name ||
   (x.original_language ? new Intl.DisplayNames(['en'], { type: 'language' }).of(x.original_language) : null) ||
@@ -62,7 +62,7 @@ export async function MovieDetailV3(props: MovieDetailV3Props) {
   const x = movie as MovieWithCredits & Extra;
   const [logo, similar] = await Promise.all([
     getMediaLogo('movie', movie.id).catch(() => null),
-    getSimilarMovies(movie.id).catch(() => []),
+    getRecommendedMovies(movie.id).catch(() => []),
   ]);
 
   const us = movie.release_dates?.results?.find((r) => r.iso_3166_1 === 'US');
@@ -96,7 +96,7 @@ export async function MovieDetailV3(props: MovieDetailV3Props) {
       />
       <CastCircles cast={(movie.credits?.cast ?? []).slice(0, 16)} />
       <TrailersRow videos={trailers(x)} title={movie.title} />
-      <PosterRow title="More like this" items={similar} />
+      <PosterRow title="You Might Also Like" items={similar} />
       <div className="v3-gutter">
         <DetailV2Faq title={movie.title} items={buildFaqItems(movieFaqInput(movie, releaseYear))} />
       </div>
@@ -138,20 +138,26 @@ export async function TvDetailV3(props: TvDetailV3Props) {
     show.seasons?.[0]?.season_number;
   const [logo, similar, openSeasonData] = await Promise.all([
     getMediaLogo('tv', show.id).catch(() => null),
-    getSimilarTvShows(show.id).catch(() => []),
+    getRecommendedTvShows(show.id).catch(() => []),
     openSeason != null ? loadSeasonDetail(show.id, openSeason).catch(() => null) : Promise.resolve(null),
   ]);
 
   const cert = x.content_ratings?.results?.find((r) => r.iso_3166_1 === 'US')?.rating || null;
   const creators = (show as { created_by?: Array<{ name: string }> }).created_by?.map((c) => c.name) ?? [];
   const seasons = x.number_of_seasons;
-  const runtime = x.episode_run_time?.[0] ?? null;
   const info: InfoRow[] = [
-    seasons ? { label: 'Seasons', value: `${seasons}${x.number_of_episodes ? ` · ${x.number_of_episodes} episodes` : ''}` } : null,
+    x.status ? { label: 'Status', value: x.status } : null,
     langName(x) && { label: 'Language', value: langName(x)! },
     fmtDate(show.first_air_date) && { label: 'First Aired', value: fmtDate(show.first_air_date)! },
-    x.status ? { label: 'Status', value: x.status } : null,
+    fmtDate(x.last_air_date) && { label: 'Last Aired', value: fmtDate(x.last_air_date)! },
+    seasons ? { label: 'Seasons', value: String(seasons) } : null,
+    x.number_of_episodes ? { label: 'Episodes', value: String(x.number_of_episodes) } : null,
   ].filter(Boolean) as InfoRow[];
+  // "2005–2021" once a show has finished, else the first year.
+  const lastYear = x.last_air_date?.slice(0, 4);
+  const finished = x.status === 'Ended' || x.status === 'Canceled';
+  const years =
+    firstAirYear === 'N/A' ? '' : finished && lastYear && lastYear !== firstAirYear ? `${firstAirYear}–${lastYear}` : firstAirYear;
   const cast = ((show as { credits?: { cast?: Array<{ id: number; name: string; character?: string; profile_path: string | null }> } })
     .credits?.cast ?? []).slice(0, 16);
 
@@ -166,11 +172,7 @@ export async function TvDetailV3(props: TvDetailV3Props) {
           logoPath: logo,
           backdropPath: show.backdrop_path ?? null,
           genres: ((show as { genres?: Array<{ name: string }> }).genres ?? []).slice(0, 3).map((g) => g.name),
-          facts: [
-            firstAirYear !== 'N/A' ? firstAirYear : '',
-            seasons ? `${seasons} Season${seasons > 1 ? 's' : ''}` : '',
-            fmtRuntime(runtime) ? `${fmtRuntime(runtime)} / ep` : '',
-          ].filter(Boolean),
+          facts: [years].filter(Boolean),
           certification: cert,
           rating: show.vote_average,
           credits: creators.length ? { label: 'Created by', names: creators } : null,
@@ -191,7 +193,7 @@ export async function TvDetailV3(props: TvDetailV3Props) {
 
       <CastCircles cast={cast} />
       <TrailersRow videos={trailers(x)} title={show.name} />
-      <PosterRow title="More like this" items={similar} />
+      <PosterRow title="You Might Also Like" items={similar} />
 
       {episodeLinks && episodeLinks.episodes.length > 0 && (
         <section className="v3-gutter py-6" aria-labelledby="ep-links-heading">

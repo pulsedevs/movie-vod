@@ -263,6 +263,28 @@ export async function getSimilarTvShows(tvId: string | number, page = 1): Promis
   }
 }
 
+// --- "You Might Also Like": TMDB recommendations (what viewers of this title also watch), which
+// match far better than /similar (shared keywords/genres); /similar only when there are none. ---
+export async function getRecommendedMovies(movieId: string | number): Promise<Movie[]> {
+  try {
+    const data = await fetchFromTMDB<MovieApiResponse>(`/movie/${movieId}/recommendations?page=1`, REVALIDATE_STANDARD);
+    const movies = filterBlacklistedContent(data.results?.map((m) => ({ ...m, media_type: 'movie' as const })) || []);
+    return movies.length ? movies : getSimilarMovies(movieId);
+  } catch {
+    return getSimilarMovies(movieId);
+  }
+}
+
+export async function getRecommendedTvShows(tvId: string | number): Promise<TVShow[]> {
+  try {
+    const data = await fetchFromTMDB<TvApiResponse>(`/tv/${tvId}/recommendations?page=1`, REVALIDATE_STANDARD);
+    const shows = filterBlacklistedContent(data.results?.map((s) => ({ ...s, media_type: 'tv' as const })) || []);
+    return shows.length ? shows : getSimilarTvShows(tvId);
+  } catch {
+    return getSimilarTvShows(tvId);
+  }
+}
+
 // --- Get movie details by ID ---
 export async function getMovieDetails(movieId: number | string): Promise<Movie> {
   try {

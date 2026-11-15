@@ -46,7 +46,7 @@ interface DetailHeroV3Props {
 }
 
 const GLASS_BTN =
-  'flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur-xl transition hover:bg-white/20';
+  'flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white backdrop-blur-xl transition hover:bg-white/20';
 
 export default function DetailHeroV3(props: DetailHeroV3Props) {
   const {
@@ -187,7 +187,7 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
           <div className="mb-5 flex items-center gap-3">
             <Link
               href={playHref}
-              className="flex items-center gap-2 rounded-full bg-white px-7 py-3 text-base font-semibold text-black shadow-[0_8px_30px_rgba(255,255,255,0.18)] transition hover:scale-[1.03] hover:bg-white/90 active:scale-[0.98]"
+              className="flex h-11 items-center gap-2 rounded-full bg-white px-6 text-base font-semibold text-black shadow-[0_8px_30px_rgba(255,255,255,0.18)] transition hover:scale-[1.03] hover:bg-white/90 active:scale-[0.98]"
             >
               <Play className="h-5 w-5 fill-black" /> {playLabel}
             </Link>
@@ -240,16 +240,16 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
           {overview && <p className="max-w-[620px] text-base leading-relaxed text-white/80 md:text-[17px]">{overview}</p>}
         </div>
 
-        <aside className="w-full shrink-0 md:w-[300px]">
+        <aside className="w-full shrink-0 md:w-[280px]">
           {info.length > 0 && (
-            <dl className="overflow-hidden rounded-xl border border-white/[0.09] bg-black/25 text-sm backdrop-blur-xl">
+            <dl className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.04] text-[13px] backdrop-blur-xl">
               {info.map((row, i) => (
                 <div
                   key={row.label}
-                  className={`flex items-center justify-between gap-4 px-4 py-3 ${i > 0 ? 'border-t border-white/[0.07]' : ''}`}
+                  className={`flex items-center justify-between gap-4 px-4 py-2.5 ${i > 0 ? 'border-t border-white/[0.06]' : ''}`}
                 >
-                  <dt className="text-white/50">{row.label}</dt>
-                  <dd className="text-right font-medium text-white/90">
+                  <dt className="text-white/45">{row.label}</dt>
+                  <dd className="text-right font-medium text-white/85">
                     {row.value}
                     {row.label === 'Runtime' && ends && <span className="text-white/45"> · Ends {ends}</span>}
                   </dd>
@@ -258,7 +258,7 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
             </dl>
           )}
           {companies.some((c) => c.logo_path) && (
-            <div className="mt-5 flex flex-wrap items-center gap-x-7 gap-y-4">
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-7 gap-y-4">
               {companies
                 .filter((c) => c.logo_path)
                 .slice(0, 3)

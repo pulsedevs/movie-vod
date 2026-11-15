@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { CalendarClock, Play } from 'lucide-react';
+import { CalendarArrowDown, CalendarArrowUp, CalendarClock, Check, Eye, Search, X } from 'lucide-react';
 import type { Season } from '@/types';
 import { readContinueWatching } from '@/utils/libraryStorage';
 import DetailHeroV3 from './DetailHeroV3';
 import { watchHref } from '../watch/links';
+import { savedPosition, useWatched } from '../watch/watched';
 import RowScroller from '../rows/RowScroller';
+import SeasonPicker from './SeasonPicker';
 
 type HeroProps = Omit<React.ComponentProps<typeof DetailHeroV3>, 'playHref' | 'playLabel'>;
 
@@ -55,10 +57,16 @@ function resumePoint(tvId: number): Ep | null {
   return s != null && e != null ? { s: Number(s), e: Number(e) } : null;
 }
 
+/** Glass pill, like cinejoy's episode toolbar. */
+const TOOL =
+  'flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border text-sm backdrop-blur-md transition-colors';
+
 /**
  * The TV detail page's interactive part: the hero, whose Play opens the player page on the
  * viewer's episode (an episode page's own episode, else where they left off, else the first one),
- * and the episodes section - season tabs + episode cards, each opening that episode's player page.
+ * and the episodes section, like cinejoy's: the season as a dropdown title; search, oldest/newest and
+ * "Mark watched" on the right; one sideways row of episode cards with an eye (watched) button and a
+ * progress bar.
  */
 export default function TvWatchV3(props: TvWatchV3Props) {
   const { hero, tvId, seasons } = props;
@@ -74,8 +82,11 @@ export default function TvWatchV3(props: TvWatchV3Props) {
     props.initialSeasonData ? { [props.initialSeasonData.season]: props.initialSeasonData.data } : {},
   );
   const [resume, setResume] = useState<Ep | null>(null);
+  const [query, setQuery] = useState('');
+  const [newest, setNewest] = useState(false);
+  const watched = useWatched(tvId);
 
-  // Resume point (browser only), and its season as the open tab unless the page chose one.
+  // Resume point (browser only), and its season as the open one unless the page chose one.
   useEffect(() => {
     const r = resumePoint(tvId);
     setResume(r);
@@ -103,111 +114,184 @@ export default function TvWatchV3(props: TvWatchV3Props) {
       : null;
   const target = pageEp ?? resume;
   const playHref = target ? watchHref('tv', tvId, target.s, target.e) : watchHref('tv', tvId);
-  const playLabel = pageEp
-    ? `Play S${pageEp.s} E${pageEp.e}`
-    : resume
-      ? `Resume S${resume.s} E${resume.e}`
-      : 'Play S1 E1';
+  const playLabel = pageEp ? `Play S${pageEp.s} E${pageEp.e}` : resume ? `Resume S${resume.s} E${resume.e}` : 'Play';
 
-  const episodes = season != null ? data[season]?.episodes : undefined;
+  const all = season != null ? data[season]?.episodes : undefined;
   const loading = season != null && !(season in data);
+
+  // Search (name or episode number) and order.
+  const q = query.trim().toLowerCase();
+  const episodes = useMemo(() => {
+    if (!all) return all;
+    const hits = q
+      ? all.filter((ep) => (ep.name ?? '').toLowerCase().includes(q) || String(ep.episode_number) === q.replace(/^e/, ''))
+      : all;
+    return newest ? [...hits].reverse() : hits;
+  }, [all, q, newest]);
+
+  // "Mark watched" covers the season's aired episodes.
+  const airedEps = useMemo(
+    () => (season != null ? (all ?? []).filter((ep) => aired(ep.air_date)).map((ep) => ({ s: season, e: ep.episode_number })) : []),
+    [all, season],
+  );
+  const seasonWatched = airedEps.length > 0 && airedEps.every((x) => watched.has(x.s, x.e));
+
+  const changeSeason = (s: number) => {
+    setSeason(s);
+    setQuery('');
+  };
+
+  const toolbar = (
+    <div className="flex min-w-0 items-center gap-2">
+      <label className="group hidden h-10 w-60 min-w-0 items-center gap-2 rounded-full border border-white/10 bg-white/10 pl-3.5 pr-1.5 text-white backdrop-blur-md transition-colors focus-within:border-white/30 hover:bg-white/[0.14] sm:flex">
+        <Search className="h-4 w-4 shrink-0 text-white/55" />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search episodes"
+          aria-label="Search episodes"
+          className="h-full min-w-0 flex-1 bg-transparent text-sm font-medium text-white outline-none placeholder:text-white/45 [&::-webkit-search-cancel-button]:hidden"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery('')}
+            aria-label="Clear search"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white/60 transition hover:bg-white/10 hover:text-white"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </label>
+      <button
+        type="button"
+        onClick={() => setNewest((v) => !v)}
+        aria-label={newest ? 'Newest first: show oldest first' : 'Oldest first: show newest first'}
+        className={`${TOOL} hidden border-white/10 bg-white/10 px-4 text-white hover:bg-white/20 sm:flex`}
+      >
+        {newest ? <CalendarArrowUp className="h-4 w-4" /> : <CalendarArrowDown className="h-4 w-4" />}
+        {newest ? 'Newest' : 'Oldest'}
+      </button>
+      {airedEps.length > 0 && (
+        <button
+          type="button"
+          onClick={() => watched.setMany(airedEps, !seasonWatched)}
+          aria-pressed={seasonWatched}
+          aria-label={seasonWatched ? 'Mark season as unwatched' : 'Mark season as watched'}
+          className={`${TOOL} w-10 justify-center sm:w-auto sm:px-4 ${
+            seasonWatched ? 'border-white bg-white text-black' : 'border-white/10 bg-white/10 text-white hover:bg-white/20'
+          }`}
+        >
+          {seasonWatched ? <Check className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          <span className="hidden sm:inline">{seasonWatched ? 'Watched' : 'Mark watched'}</span>
+        </button>
+      )}
+    </div>
+  );
 
   return (
     <>
       <DetailHeroV3 {...hero} playHref={playHref} playLabel={playLabel} />
 
-      {/* Episodes: one sideways row of cards (like the home rows), season tabs on the right. */}
       <div id="v3-episodes" className="scroll-mt-24">
         <RowScroller
-          title="Episodes"
-          gap="gap-4"
-          action={
-            tabs.length > 1 ? (
-              <div className="v3-scroller -my-1 flex min-w-0 max-w-[60vw] gap-2 overflow-x-auto py-1" role="tablist" aria-label="Seasons">
-                {tabs.map((t) => {
-                  const on = t.season_number === season;
-                  return (
-                    <button
-                      key={t.season_number}
-                      type="button"
-                      role="tab"
-                      aria-selected={on}
-                      onClick={() => setSeason(t.season_number)}
-                      className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
-                        on
-                          ? 'bg-white text-black shadow-[0_2px_12px_rgba(255,255,255,0.2)]'
-                          : 'border border-white/10 bg-white/[0.06] text-white/75 backdrop-blur-xl hover:bg-white/[0.12] hover:text-white'
-                      }`}
-                    >
-                      {t.season_number === 0 ? 'Specials' : `Season ${t.season_number}`}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : undefined
-          }
+          title={<SeasonPicker seasons={tabs} value={season} onChange={changeSeason} />}
+          gap="gap-6"
+          action={toolbar}
+          resetKey={`${season}|${q}|${newest ? 1 : 0}|${loading ? 1 : 0}`}
         >
           {loading ? (
             Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="aspect-video w-60 shrink-0 animate-pulse rounded-xl bg-white/[0.06] md:w-72" />
+              <div key={i} className="w-72 shrink-0 md:w-80">
+                <div className="aspect-video animate-pulse rounded-xl bg-white/[0.06]" />
+                <div className="mt-3 h-4 w-2/3 animate-pulse rounded bg-white/[0.06]" />
+              </div>
             ))
-          ) : !episodes?.length ? (
+          ) : !all?.length ? (
             <p className="py-6 text-sm text-white/50">No episodes listed for this season yet.</p>
+          ) : !episodes?.length ? (
+            <p className="py-6 text-sm text-white/50">No episodes match &ldquo;{query.trim()}&rdquo;.</p>
           ) : (
             episodes.map((ep) => {
-              const isResume = resume?.s === season && resume?.e === ep.episode_number;
+              const s = season!;
               const ok = aired(ep.air_date);
               const runtime = fmtMin(ep.runtime);
-              const card = (
+              const seen = ok && watched.has(s, ep.episode_number);
+              // Progress: watched = full; else the player's saved position over the runtime.
+              const pos = ok && !seen && ep.runtime ? savedPosition(tvId, s, ep.episode_number) : 0;
+              const pct = seen ? 100 : pos > 0 && ep.runtime ? Math.min(100, (pos / (ep.runtime * 60)) * 100) : 0;
+              const href = watchHref('tv', tvId, s, ep.episode_number);
+              const name = ep.name || `Episode ${ep.episode_number}`;
+              const BADGE =
+                'absolute rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[11px] text-white backdrop-blur-md';
+              const still = (
                 <>
-                  <div
-                    className={`relative aspect-video overflow-hidden rounded-xl bg-white/[0.05] ring-1 ring-white/[0.08] shadow-[0_10px_28px_rgba(0,0,0,0.4)] transition duration-300 ${
-                      ok ? 'group-hover/ep:ring-white/30' : 'opacity-50'
-                    }`}
-                  >
-                    {ep.still_path ? (
-                      <Image src={`https://image.tmdb.org/t/p/w300${ep.still_path}`} alt="" fill sizes="288px" className="object-cover" />
-                    ) : (
-                      <span className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-white/15">E{ep.episode_number}</span>
-                    )}
-                    {ok && (
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition group-hover/ep:opacity-100">
-                        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-black">
-                          <Play className="ml-0.5 h-5 w-5 fill-black" />
-                        </span>
-                      </span>
-                    )}
-                    <span className="absolute left-2 top-2 rounded-md bg-black/70 px-2 py-0.5 text-[12px] font-semibold text-white backdrop-blur">
-                      E{ep.episode_number}
+                  {ep.still_path ? (
+                    <Image
+                      src={`https://image.tmdb.org/t/p/w500${ep.still_path}`}
+                      alt=""
+                      fill
+                      sizes="320px"
+                      className="object-cover transition duration-500 group-hover/ep:brightness-110"
+                    />
+                  ) : (
+                    <span className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-white/15">E{ep.episode_number}</span>
+                  )}
+                  <span className={`${BADGE} left-2 top-2 font-semibold`}>E{ep.episode_number}</span>
+                  {ok && runtime && <span className={`${BADGE} bottom-2 right-2 font-medium`}>{runtime}</span>}
+                  {!ok && (
+                    <span className={`${BADGE} bottom-2 left-2 flex items-center gap-1 font-medium`}>
+                      <CalendarClock className="h-3 w-3" /> {fmtDate(ep.air_date)}
                     </span>
-                    {isResume && ok && (
-                      <span className="absolute right-2 top-2 flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[11px] font-semibold text-black">
-                        <Play className="h-3 w-3 fill-black" /> Continue
-                      </span>
-                    )}
-                    {ok && runtime && (
-                      <span className="absolute bottom-2 right-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur">
-                        {runtime}
-                      </span>
-                    )}
-                    {!ok && (
-                      <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded-md bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">
-                        <CalendarClock className="h-3 w-3" /> {fmtDate(ep.air_date)}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-2.5 line-clamp-1 text-[15px] font-semibold text-white">{ep.name || `Episode ${ep.episode_number}`}</p>
-                  {ep.overview && <p className="mt-1 line-clamp-2 text-[13px] leading-snug text-white/60">{ep.overview}</p>}
+                  )}
+                  {pct > 0 && (
+                    <span className="absolute inset-x-0 bottom-0 h-1 bg-white/20">
+                      <span className="block h-full bg-white" style={{ width: `${pct}%` }} />
+                    </span>
+                  )}
                 </>
               );
-              const cls = 'block w-60 shrink-0 md:w-72';
-              return ok && season != null ? (
-                <Link key={ep.episode_number} href={watchHref('tv', tvId, season, ep.episode_number)} className={`group/ep ${cls}`}>
-                  {card}
-                </Link>
-              ) : (
-                <div key={ep.episode_number} aria-disabled className={`${cls} cursor-not-allowed`}>
-                  {card}
+              return (
+                <div key={ep.episode_number} className={`group/ep flex w-72 shrink-0 flex-col gap-3 md:w-80 ${ok ? '' : 'opacity-50'}`}>
+                  <div
+                    className={`relative aspect-video overflow-hidden rounded-xl border border-white/5 bg-black/20 transition-all duration-300 ${
+                      ok ? 'group-hover/ep:scale-105 group-hover/ep:ring-1 group-hover/ep:ring-white/50' : ''
+                    }`}
+                  >
+                    {ok ? (
+                      <Link href={href} aria-label={`Play E${ep.episode_number}: ${name}`} className="absolute inset-0 block">
+                        {still}
+                      </Link>
+                    ) : (
+                      still
+                    )}
+                    {ok && (
+                      <button
+                        type="button"
+                        onClick={() => watched.toggle(s, ep.episode_number)}
+                        aria-pressed={seen}
+                        aria-label={seen ? 'Mark episode as unwatched' : 'Mark episode as watched'}
+                        title={seen ? 'Mark as unwatched' : 'Mark as watched'}
+                        className={`absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full border backdrop-blur-md transition-colors ${
+                          seen ? 'border-white bg-white text-black' : 'border-white/15 bg-black/45 text-white hover:bg-black/65'
+                        }`}
+                      >
+                        {seen ? <Check className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    )}
+                  </div>
+                  {ok ? (
+                    <Link href={href} tabIndex={-1} aria-hidden className="block space-y-1 px-1">
+                      <h3 className="line-clamp-1 text-base font-bold text-white transition-colors group-hover/ep:text-white/90">{name}</h3>
+                      {ep.overview && <p className="line-clamp-2 text-xs leading-relaxed text-white/60">{ep.overview}</p>}
+                    </Link>
+                  ) : (
+                    <div className="space-y-1 px-1">
+                      <h3 className="line-clamp-1 text-base font-bold text-white">{name}</h3>
+                      {ep.overview && <p className="line-clamp-2 text-xs leading-relaxed text-white/60">{ep.overview}</p>}
+                    </div>
+                  )}
                 </div>
               );
             })
