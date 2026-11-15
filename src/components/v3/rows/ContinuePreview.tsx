@@ -11,6 +11,7 @@ import { useHybridData } from '@/hooks/useHybridData';
 import BackdropTrailer from '../detail/BackdropTrailer';
 import { useTrailersPref } from '../prefs';
 import { savedPosition, timeLeft, usePreview } from '../preview';
+import { watchHref } from '../watch/links';
 
 export interface PreviewTarget {
   id: number;
@@ -133,7 +134,7 @@ export default function ContinuePreview({
         )}
         <div className="flex items-center gap-2">
           <Link
-            href={`${target.href}?play=1`}
+            href={watchHref(target.type, target.id, target.season, target.episode)}
             className="flex flex-1 items-center justify-center gap-2 rounded-full bg-white py-2.5 text-sm font-semibold text-black transition hover:bg-white/90"
           >
             <Play className="h-4 w-4 fill-black" /> Resume

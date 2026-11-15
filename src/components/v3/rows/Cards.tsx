@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Play, Star } from 'lucide-react';
 import type { MediaItem } from '@/types';
 import { useDetailHref } from '@/hooks/useDetailHref';
+import { watchHref } from '../watch/links';
 
 const titleOf = (i: MediaItem) => (i.media_type === 'movie' ? i.title : i.name) || 'Untitled';
 const yearOf = (i: MediaItem) => ((i.media_type === 'movie' ? i.release_date : i.first_air_date) || '').slice(0, 4);
@@ -54,7 +55,7 @@ export function PosterFrame({
 
       <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-2.5 px-3 text-center opacity-0 transition duration-300 group-hover/poster:opacity-100 group-focus-within/poster:opacity-100">
         <Link
-          href={`${href}?play=1`}
+          href={watchHref(item.media_type === 'movie' ? 'movie' : 'tv', item.id)}
           aria-label={`Play ${title}`}
           tabIndex={-1}
           className="pointer-events-auto flex h-14 w-14 scale-90 items-center justify-center rounded-full bg-white text-black shadow-[0_8px_30px_rgba(0,0,0,0.45)] transition duration-300 hover:scale-110 group-hover/poster:scale-100"

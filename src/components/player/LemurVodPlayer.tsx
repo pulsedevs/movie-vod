@@ -17,6 +17,11 @@ interface Props {
   episode?: number;
   /** TV: the panel has no such show/episode (backend 404) — the caller shows its other sources. */
   onMissing?: () => void;
+  /** Replaces the title in the top bar (e.g. Back + title on the watch page). It hides with the
+   *  controls while playing, and stays up while loading so the viewer can always leave. */
+  header?: ReactNode;
+  /** The loading / unavailable screens fill the player's box instead of keeping 16:9. */
+  fill?: boolean;
 }
 
 /** One selectable copy of the film — audio language × quality — plus its packaging state. */
@@ -189,7 +194,7 @@ const CSS = `
  * auto-hiding controls, seek bar with buffer + hover time, ±10s, volume, speed, PiP, fullscreen,
  * keyboard shortcuts, and resume-where-you-left-off.
  */
-export default function LemurVodPlayer({ tmdbId, title, origLang, poster, className, season, episode, onMissing }: Props) {
+export default function LemurVodPlayer({ tmdbId, title, origLang, poster, className, season, episode, onMissing, header, fill }: Props) {
   const isTv = season != null && episode != null;
   const posId = isTv ? `tv:${tmdbId}:${season}:${episode}` : `movie:${tmdbId}`;
   const onMissingRef = useRef(onMissing);
@@ -649,9 +654,16 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
   // ── pre-playback states: spinner / unavailable / error ────────────────────────────────────────
   if (state.s !== 'ready') {
     return (
-      <div className={`lp-player ${className || ''}`}>
+      <div className={`lp-player ${className || ''}`} style={header ? { position: 'relative' } : undefined}>
         <style>{CSS}</style>
-        <div className="lp-wait" style={poster ? { backgroundImage: `linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.75)),url(${poster})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
+        {header && <div className="lp-top lp-show" style={{ zIndex: 1 }}>{header}</div>}
+        <div
+          className="lp-wait"
+          style={{
+            ...(fill ? { height: '100%', aspectRatio: 'auto' } : null),
+            ...(poster ? { backgroundImage: `linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.75)),url(${poster})`, backgroundSize: 'cover', backgroundPosition: 'center' } : null),
+          }}
+        >
           {(state.s === 'loading' || state.s === 'preparing') && <div className="lp-spin" role="status" aria-label="Loading" />}
           {state.s === 'unavailable' && (
             <div style={{ opacity: 0.9 }}>
@@ -719,7 +731,7 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
       {resumed != null && <div className="lp-toast">Resumed from {fmt(resumed)}</div>}
 
       <div className={`lp-top ${showUi ? 'lp-show' : ''}`}>
-        {title && <div className="lp-title">{title}</div>}
+        {header ?? (title && <div className="lp-title">{title}</div>)}
       </div>
 
       <div className={`lp-bottom ${showUi ? 'lp-show' : ''}`}>

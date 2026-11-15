@@ -8,6 +8,7 @@ import { useContinueWatchingLocal } from '@/hooks/useContinueWatchingLocal';
 import { useDetailHref } from '@/hooks/useDetailHref';
 import { readContinueWatching, writeContinueWatching, type ContinueWatchingItem } from '@/utils/libraryStorage';
 import RowScroller from './RowScroller';
+import { watchHref } from '../watch/links';
 import ContinuePreview, { type PreviewTarget } from './ContinuePreview';
 import { loadPreview, savedPosition, timeLeft, usePreview } from '../preview';
 import { useV3Scroll } from '../V3Shell';
@@ -68,7 +69,7 @@ function ContinueCard({
       }
       onMouseLeave={onHoverEnd}
     >
-      <Link href={`${href}?play=1`} className="group/cw block">
+      <Link href={watchHref(type, id, season, episode)} className="group/cw block">
         <div className="relative aspect-video overflow-hidden rounded-2xl bg-white/[0.05] ring-1 ring-white/[0.08] shadow-[0_12px_32px_rgba(0,0,0,0.45)] transition duration-300 group-hover/cw:ring-white/25">
           {img && <Image src={img} alt={title} fill sizes="288px" className="object-cover" />}
           <div className="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition group-focus-visible/cw:opacity-100">

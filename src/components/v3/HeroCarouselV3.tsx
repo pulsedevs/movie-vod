@@ -8,6 +8,7 @@ import { CalendarDays, Check, Info, Play, Plus, Star } from 'lucide-react';
 import type { MediaItem } from '@/types';
 import { useHybridData } from '@/hooks/useHybridData';
 import { useDetailHref } from '@/hooks/useDetailHref';
+import { watchHref } from './watch/links';
 import { fetchWithRetry } from '@/utils/fetchWithRetry';
 import { ambientSrc, useAmbient } from './ambient/AmbientContext';
 import { genreIcon, genreName } from './genres';
@@ -174,7 +175,7 @@ export default function HeroCarouselV3({ mediaType = 'movie', short = false }: H
 
             <div className={`flex items-center gap-3 ${short ? 'mt-5' : ''}`}>
               <Link
-                href={`${href}?play=1`}
+                href={watchHref(item.media_type === 'movie' ? 'movie' : 'tv', item.id)}
                 className="flex items-center gap-2 rounded-full bg-white px-7 py-3 text-base font-semibold text-black shadow-[0_8px_30px_rgba(255,255,255,0.18)] transition hover:scale-[1.03] hover:bg-white/90 active:scale-[0.98]"
               >
                 <Play className="h-5 w-5 fill-black" /> Play

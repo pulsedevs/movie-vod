@@ -3,7 +3,7 @@ import type { MediaItem, StreamSource } from '@/types';
 import type { MovieWithCredits } from '@/lib/detail/movieTypes';
 import type { TvShowWithCredits } from '@/lib/detail/tvTypes';
 import { getMediaLogo, getSimilarMovies, getSimilarTvShows } from '@/services/api';
-import MovieDetailV2 from '@/components/detail/v2/MovieDetailV2';
+import { watchHref } from '../watch/links';
 import TvWatchV3 from './TvWatchV3';
 import { loadSeasonDetail } from '@/lib/detail/loadEpisodeDetail';
 import DetailV2Faq from '@/components/detail/v2/DetailV2Faq';
@@ -92,7 +92,7 @@ export async function MovieDetailV3(props: MovieDetailV3Props) {
         runtimeMin={movie.runtime}
         companies={x.production_companies ?? []}
         trailerKey={trailerId}
-        player={<MovieDetailV2 {...props} playerOnly />}
+        playHref={watchHref('movie', movie.id)}
       />
       <CastCircles cast={(movie.credits?.cast ?? []).slice(0, 16)} />
       <TrailersRow videos={trailers(x)} title={movie.title} />
@@ -184,10 +184,6 @@ export async function TvDetailV3(props: TvDetailV3Props) {
         posterPath={show.poster_path ?? null}
         backdropPath={show.backdrop_path ?? null}
         seasons={show.seasons ?? []}
-        sources={props.sources}
-        trailerId={trailerId}
-        voteCount={show.vote_count}
-        initialSourceIndex={props.initialSourceIndex}
         initialSeasonNumber={props.initialSeasonNumber}
         initialEpisodeNumber={props.initialEpisodeNumber}
         initialSeasonData={openSeason != null && openSeasonData ? { season: openSeason, data: openSeasonData } : null}
