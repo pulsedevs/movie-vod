@@ -86,6 +86,13 @@ export default function GlassNav({ scrolled = false }: { scrolled?: boolean }) {
   };
   const top = useSlidingPill(activeRoute);
   const bottom = useSlidingPill(activeRoute);
+  // The new section's icon pops in with a bounce (not on the first paint).
+  const [seenRoute, setSeenRoute] = useState(activeRoute);
+  const [pop, setPop] = useState(false);
+  if (seenRoute !== activeRoute) {
+    setSeenRoute(activeRoute);
+    setPop(true);
+  }
 
   useEffect(() => {
     if (!settingsOpen) return;
@@ -148,7 +155,7 @@ export default function GlassNav({ scrolled = false }: { scrolled?: boolean }) {
                     active ? `text-black ${top.ready ? '' : 'bg-white'}` : 'text-white/75 hover:text-white'
                   }`}
                 >
-                  {active && <Icon className="h-4 w-4" strokeWidth={2.2} />}
+                  {active && <Icon className={`h-4 w-4 ${pop ? 'v3-navicon-in' : ''}`} strokeWidth={2.2} />}
                   {label}
                 </Link>
               );
@@ -228,7 +235,11 @@ export default function GlassNav({ scrolled = false }: { scrolled?: boolean }) {
                 active ? `text-black ${bottom.ready ? '' : 'bg-white'}` : 'text-white/70'
               }`}
             >
-              <Icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.3 : 1.9} />
+              <Icon
+                key={active ? 'on' : 'off'}
+                className={`h-[18px] w-[18px] ${active && pop ? 'v3-navicon-in' : ''}`}
+                strokeWidth={active ? 2.3 : 1.9}
+              />
               {label}
             </Link>
           );
