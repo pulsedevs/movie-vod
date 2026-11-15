@@ -240,9 +240,11 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
           {overview && <p className="max-w-[620px] text-base leading-relaxed text-white/80 md:text-[17px]">{overview}</p>}
         </div>
 
-        <aside className="w-full shrink-0 md:w-[280px]">
+        {/* The info box's bottom lines up with the overview's; the network logo hangs below it, in the
+            hero's bottom padding (so the box sits low and covers less of the picture, like cinejoy's). */}
+        <aside className="relative w-full shrink-0 md:w-[280px]">
           {info.length > 0 && (
-            <dl className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.04] text-[13px] backdrop-blur-xl">
+            <dl className="overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.04] text-xs backdrop-blur-sm">
               {info.map((row, i) => (
                 <div
                   key={row.label}
@@ -258,7 +260,7 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
             </dl>
           )}
           {companies.some((c) => c.logo_path) && (
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-7 gap-y-4">
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-x-7 gap-y-4 md:absolute md:inset-x-0 md:top-full md:mt-3 md:flex-nowrap md:gap-x-5">
               {companies
                 .filter((c) => c.logo_path)
                 .slice(0, 3)
@@ -269,7 +271,7 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
                     src={`https://image.tmdb.org/t/p/w185${c.logo_path}`}
                     alt={c.name}
                     title={c.name}
-                    className="h-7 w-auto max-w-[120px] object-contain opacity-70 brightness-0 invert"
+                    className="h-7 w-auto max-w-[120px] object-contain opacity-70 brightness-0 invert md:max-w-[80px]"
                   />
                 ))}
             </div>
