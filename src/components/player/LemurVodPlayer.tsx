@@ -22,6 +22,11 @@ interface Props {
   header?: ReactNode;
   /** The loading / unavailable screens fill the player's box instead of keeping 16:9. */
   fill?: boolean;
+  /** TV: the next episode. A "Next Episode" button shows over the last stretch, and the episode
+   *  rolls on to it when it ends. */
+  next?: { label?: string; go: () => void };
+  /** TV: the episode list, shown in a wide panel from the Episodes button. */
+  episodes?: ReactNode;
 }
 
 /** One selectable copy of the film — audio language × quality — plus its packaging state. */
@@ -84,7 +89,7 @@ const prefLang = (): string => {
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 /** The settings panel: its first page (tiles), or one of its lists. */
-type Panel = '' | 'main' | 'quality' | 'audio' | 'subs' | 'speed' | 'subStyle';
+type Panel = '' | 'main' | 'quality' | 'audio' | 'subs' | 'speed' | 'subStyle' | 'episodes';
 
 /** How subtitles look and when they show; kept in this browser. */
 interface SubStyle {
@@ -158,6 +163,8 @@ const I = {
   chevL: <path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />,
   chevR: <path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />,
   textSize: <path d="M9 4v3h5v12h3V7h5V4H9zm-6 8h3v7h3v-7h3V9H3v3z" />,
+  episodes: <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z" />,
+  skipNext: <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />,
 };
 
 /** A small icon inside menus and tiles. */
@@ -228,6 +235,11 @@ const CSS = `
 .lp-range::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#fff;border:0}
 .lp-vol:hover .lp-range,.lp-range:focus-visible{width:72px;opacity:1;margin:0 10px 0 4px}
 .lp-shield{position:absolute;inset:0;z-index:2}
+.lp-eppanel{position:absolute;left:32px;right:32px;bottom:76px;z-index:4;max-height:calc(100% - 140px);overflow:hidden;display:flex;flex-direction:column;background:rgba(18,18,18,.55);backdrop-filter:blur(28px) saturate(1.8);-webkit-backdrop-filter:blur(28px) saturate(1.8);border:1px solid rgba(255,255,255,.1);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.5);line-height:1.2}
+.lp-next{position:absolute;right:32px;bottom:40px;z-index:3;display:flex;align-items:center;gap:10px;height:48px;padding:0 18px 0 24px;border:0;border-radius:999px;background:rgba(255,255,255,.92);color:#000;font:inherit;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:bottom .3s ease-out,transform .15s,background .15s;animation:lpnext .35s ease-out}
+.lp-next:hover{background:#fff;transform:scale(1.03)}
+.lp-next.up{bottom:96px}
+@keyframes lpnext{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 .lp-panel{position:absolute;right:32px;bottom:76px;z-index:4;width:343px;max-width:calc(100% - 32px);max-height:calc(100% - 140px);overflow:auto;overscroll-behavior:contain;scrollbar-width:none;background:rgba(15,15,15,.72);backdrop-filter:blur(28px) saturate(1.8);-webkit-backdrop-filter:blur(28px) saturate(1.8);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.5);line-height:1.2}
 .lp-tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .lp-tile{display:flex;flex-direction:column;justify-content:center;gap:7px;min-height:80px;min-width:0;padding:14px;text-align:left;color:#fff;font:inherit;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer;transition:background .15s}
@@ -304,9 +316,11 @@ const CSS = `
   .lp-grp{gap:2px}.lp-btn{width:36px;height:36px}.lp-btn svg{width:22px;height:22px}
   .lp-time{font-size:12px;padding:0 6px}.lp-vol .lp-range{display:none}.lp-big{width:68px;height:68px}
   .lp-panel{left:8px;right:8px;width:auto;max-width:none;bottom:60px;padding:16px}
+  .lp-eppanel{left:8px;right:8px;bottom:60px}
+  .lp-next{right:12px;bottom:24px;height:44px;font-size:15px}.lp-next.up{bottom:72px}
   .lp-cues.up{bottom:88px}
 }
-@media (prefers-reduced-motion:reduce){.lp-top,.lp-bottom,.lp-track,.lp-knob,.lp-big,.lp-shade,.lp-range,.lp-switch,.lp-switch::after{transition:none}}
+@media (prefers-reduced-motion:reduce){.lp-top,.lp-bottom,.lp-track,.lp-knob,.lp-big,.lp-shade,.lp-range,.lp-switch,.lp-switch::after,.lp-next{transition:none;animation:none}}
 `;
 
 /**
@@ -315,11 +329,13 @@ const CSS = `
  * auto-hiding controls, seek bar with buffer + hover time, ±10s, volume, speed, PiP, fullscreen,
  * keyboard shortcuts, and resume-where-you-left-off.
  */
-export default function LemurVodPlayer({ tmdbId, title, origLang, poster, className, season, episode, onMissing, header, fill }: Props) {
+export default function LemurVodPlayer({ tmdbId, title, origLang, poster, className, season, episode, onMissing, header, fill, next, episodes }: Props) {
   const isTv = season != null && episode != null;
   const posId = isTv ? `tv:${tmdbId}:${season}:${episode}` : `movie:${tmdbId}`;
   const onMissingRef = useRef(onMissing);
   useEffect(() => { onMissingRef.current = onMissing; }, [onMissing]);
+  const nextRef = useRef(next);
+  useEffect(() => { nextRef.current = next; }, [next]);
   const rootRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
@@ -548,6 +564,7 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
     const onEnd = () => {
       setEnded(true); setPlaying(false);
       try { localStorage.removeItem(posKey(posId)); } catch { /* ignore */ }
+      nextRef.current?.go();                    // TV: on to the next episode
     };
     const pairs: [string, EventListener][] = [
       ['timeupdate', onTime], ['progress', updBuf], ['durationchange', onDur], ['loadedmetadata', onDur],
@@ -957,6 +974,9 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
   const bpct = full ? Math.max(pct, (buf / full) * 100) : 0;
   const apct = full && packaging ? (dur / full) * 100 : 0;
   const showUi = ui || !playing;
+  // The next-episode button: the last 2 minutes (less on short episodes, at least 30 s).
+  const left = full - cur;
+  const showNext = full > 0 && !ended && left > 0.5 && left <= Math.min(120, Math.max(30, full * 0.06));
 
   return (
     <div
@@ -1020,7 +1040,15 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
       </div>
 
       {panel && <div className="lp-shield" onClick={() => setPanel('')} />}
-      {panel && <div className="lp-panel" role="dialog" aria-label="Player settings">{renderPanel()}</div>}
+      {panel === 'episodes' && episodes && <div className="lp-eppanel" role="dialog" aria-label="Episodes">{episodes}</div>}
+      {panel && panel !== 'episodes' && <div className="lp-panel" role="dialog" aria-label="Player settings">{renderPanel()}</div>}
+
+      {/* TV: the last stretch (end credits) offers the next episode, controls up or not. */}
+      {next && showNext && (
+        <button type="button" className={`lp-next ${showUi ? 'up' : ''}`} onClick={next.go}>
+          {next.label || 'Next Episode'}<Ico d={I.skipNext} size={22} />
+        </button>
+      )}
 
       <div className={`lp-bottom ${showUi ? 'lp-show' : ''}`}>
         <div
@@ -1062,6 +1090,9 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
             </button>
           </div>
           <div className="lp-grp">
+            {episodes && (
+              <Btn onClick={() => openPanel('episodes')} label="Episodes" active={panel === 'episodes'} expanded={panel === 'episodes'}>{I.episodes}</Btn>
+            )}
             {pipOk && <Btn onClick={togglePip} label="Picture in picture">{I.pip}</Btn>}
             {versions.length > 1 && (
               <Btn onClick={() => openPanel('quality')} label="Quality & language" active={panel === 'quality'} expanded={panel === 'quality'}>{I.cloud}</Btn>

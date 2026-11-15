@@ -50,8 +50,15 @@ export default async function WatchEpisodePage({ params }: Props) {
     if (later) next = { s: later.season_number, e: 1 };
   }
 
+  const seasons = (show.seasons ?? [])
+    .filter((x) => x.episode_count > 0)
+    .sort((a, b) => (a.season_number === 0 ? 1 : b.season_number === 0 ? -1 : a.season_number - b.season_number))
+    .map((x) => ({ season_number: x.season_number, name: x.name, episode_count: x.episode_count }));
+
   return (
     <WatchScreen
+      // A new episode starts fresh (fallback player, Continue Watching entry).
+      key={`${show.id}:${s}:${e}`}
       kind="tv"
       tmdbId={show.id}
       title={show.name}
@@ -62,6 +69,15 @@ export default async function WatchEpisodePage({ params }: Props) {
       season={s}
       episode={e}
       nextHref={next ? watchHref('tv', show.id, next.s, next.e) : null}
+      seasons={seasons}
+      seasonEpisodes={eps.map((x) => ({
+        episode_number: x.episode_number,
+        name: x.name,
+        overview: x.overview,
+        still_path: x.still_path,
+        runtime: x.runtime,
+        air_date: x.air_date,
+      }))}
       sources={discoverStreamSources()}
     />
   );

@@ -8,6 +8,8 @@ import type { StreamSource } from '@/types';
 import LemurVodPlayer from '@/components/player/LemurVodPlayer';
 import MoviePlayer from '@/components/player/MoviePlayer';
 import { readContinueWatching, writeContinueWatching } from '@/utils/libraryStorage';
+import type { SeasonEps } from '../detail/TvWatchV3';
+import EpisodesPanel, { type SeasonTab } from './EpisodesPanel';
 import '../v3.css';
 
 /** The v3 fonts (this page sits outside the v3 shell that normally loads them). */
@@ -37,16 +39,20 @@ interface WatchScreenProps {
   episode?: number;
   /** TV: the next aired episode's watch page. */
   nextHref?: string | null;
+  /** TV: the show's seasons and the playing season's episodes, for the player's Episodes panel. */
+  seasons?: SeasonTab[];
+  seasonEpisodes?: SeasonEps['episodes'];
   /** TV: an episode our servers don't have plays from these instead. */
   sources?: StreamSource[];
 }
 
 /**
- * The player page: the video fills the window, with Back, the title (to the details page) and,
- * for a show, Next episode in the player's own top bar, which hides with its controls.
+ * The player page: the video fills the window, with Back and the title (to the details page) in the
+ * player's own top bar, which hides with its controls. A show adds the player's Episodes panel and
+ * its Next Episode button near the end (it also rolls on to the next episode by itself).
  */
 export default function WatchScreen(props: WatchScreenProps) {
-  const { kind, tmdbId, title, subtitle, detailsHref, posterPath, backdropPath, origLang, season, episode, nextHref, sources } = props;
+  const { kind, tmdbId, title, subtitle, detailsHref, posterPath, backdropPath, origLang, season, episode, nextHref, sources, seasons, seasonEpisodes } = props;
   const router = useRouter();
   const [missing, setMissing] = useState(false);
   const [sourceIndex, setSourceIndex] = useState(0);
@@ -77,7 +83,8 @@ export default function WatchScreen(props: WatchScreenProps) {
     else router.push(detailsHref);
   };
 
-  const header = (
+  // `withNext`: only the fallback player needs Next up here (ours shows it over the end credits).
+  const header = (withNext: boolean) => (
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
       <button
         type="button"
@@ -96,7 +103,7 @@ export default function WatchScreen(props: WatchScreenProps) {
         {subtitle && <span className="mt-0.5 block truncate text-[13px] text-white/65">{subtitle}</span>}
       </Link>
       <div className="flex justify-end">
-        {nextHref && (
+        {withNext && nextHref && (
           <Link
             href={nextHref}
             className="flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90"
@@ -114,7 +121,7 @@ export default function WatchScreen(props: WatchScreenProps) {
     return (
       <div className="v3-root fixed inset-0 overflow-y-auto bg-black text-white [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <Fonts />
-        <div className="sticky top-0 z-10 bg-gradient-to-b from-black via-black/80 to-transparent px-[18px] pb-6 pt-3.5">{header}</div>
+        <div className="sticky top-0 z-10 bg-gradient-to-b from-black via-black/80 to-transparent px-[18px] pb-6 pt-3.5">{header(true)}</div>
         <div className="mx-auto max-w-[1400px] px-4 pb-10">
           <MoviePlayer
             sources={sources ?? []}
@@ -143,9 +150,15 @@ export default function WatchScreen(props: WatchScreenProps) {
         title={title}
         origLang={origLang}
         poster={backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : undefined}
-        header={header}
+        header={header(false)}
         fill
         onMissing={kind === 'tv' ? () => setMissing(true) : undefined}
+        next={kind === 'tv' && nextHref ? { go: () => router.push(nextHref) } : undefined}
+        episodes={
+          kind === 'tv' && seasons?.length && season != null && episode != null ? (
+            <EpisodesPanel tvId={tmdbId} seasons={seasons} season={season} episode={episode} initialEpisodes={seasonEpisodes} />
+          ) : undefined
+        }
         className="h-full w-full"
       />
     </div>
