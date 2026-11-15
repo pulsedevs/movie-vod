@@ -8,6 +8,7 @@ import type { Season } from '@/types';
 import { readContinueWatching } from '@/utils/libraryStorage';
 import DetailHeroV3 from './DetailHeroV3';
 import { watchHref } from '../watch/links';
+import RowScroller from '../rows/RowScroller';
 
 type HeroProps = Omit<React.ComponentProps<typeof DetailHeroV3>, 'playHref' | 'playLabel'>;
 
@@ -115,107 +116,104 @@ export default function TvWatchV3(props: TvWatchV3Props) {
     <>
       <DetailHeroV3 {...hero} playHref={playHref} playLabel={playLabel} />
 
-      <section id="v3-episodes" className="v3-gutter scroll-mt-24 py-6">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold tracking-tight md:text-[22px]">Episodes</h2>
-          {tabs.length > 1 && (
-            <div className="v3-scroller -mx-1 flex max-w-full gap-2 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Seasons">
-              {tabs.map((t) => {
-                const on = t.season_number === season;
-                return (
-                  <button
-                    key={t.season_number}
-                    type="button"
-                    role="tab"
-                    aria-selected={on}
-                    onClick={() => setSeason(t.season_number)}
-                    className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${
-                      on
-                        ? 'bg-white text-black shadow-[0_2px_12px_rgba(255,255,255,0.2)]'
-                        : 'border border-white/10 bg-white/[0.06] text-white/75 backdrop-blur-xl hover:bg-white/[0.12] hover:text-white'
-                    }`}
-                  >
-                    {t.season_number === 0 ? 'Specials' : `Season ${t.season_number}`}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {loading ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="aspect-video animate-pulse rounded-xl bg-white/[0.06]" />
-            ))}
-          </div>
-        ) : !episodes?.length ? (
-          <p className="text-sm text-white/50">No episodes listed for this season yet.</p>
-        ) : (
-          <div className="grid grid-cols-1 gap-x-5 gap-y-7 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {episodes.map((ep) => {
+      {/* Episodes: one sideways row of cards (like the home rows), season tabs on the right. */}
+      <div id="v3-episodes" className="scroll-mt-24">
+        <RowScroller
+          title="Episodes"
+          gap="gap-4"
+          action={
+            tabs.length > 1 ? (
+              <div className="v3-scroller -my-1 flex min-w-0 max-w-[60vw] gap-2 overflow-x-auto py-1" role="tablist" aria-label="Seasons">
+                {tabs.map((t) => {
+                  const on = t.season_number === season;
+                  return (
+                    <button
+                      key={t.season_number}
+                      type="button"
+                      role="tab"
+                      aria-selected={on}
+                      onClick={() => setSeason(t.season_number)}
+                      className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
+                        on
+                          ? 'bg-white text-black shadow-[0_2px_12px_rgba(255,255,255,0.2)]'
+                          : 'border border-white/10 bg-white/[0.06] text-white/75 backdrop-blur-xl hover:bg-white/[0.12] hover:text-white'
+                      }`}
+                    >
+                      {t.season_number === 0 ? 'Specials' : `Season ${t.season_number}`}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : undefined
+          }
+        >
+          {loading ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="aspect-video w-60 shrink-0 animate-pulse rounded-xl bg-white/[0.06] md:w-72" />
+            ))
+          ) : !episodes?.length ? (
+            <p className="py-6 text-sm text-white/50">No episodes listed for this season yet.</p>
+          ) : (
+            episodes.map((ep) => {
               const isResume = resume?.s === season && resume?.e === ep.episode_number;
               const ok = aired(ep.air_date);
+              const runtime = fmtMin(ep.runtime);
               const card = (
                 <>
                   <div
-                    className={`relative aspect-video overflow-hidden rounded-xl bg-white/[0.05] ring-1 ring-white/[0.08] shadow-[0_12px_32px_rgba(0,0,0,0.45)] transition duration-300 ${
-                      ok ? 'group-hover/ep:-translate-y-1 group-hover/ep:ring-white/25' : 'opacity-50'
+                    className={`relative aspect-video overflow-hidden rounded-xl bg-white/[0.05] ring-1 ring-white/[0.08] shadow-[0_10px_28px_rgba(0,0,0,0.4)] transition duration-300 ${
+                      ok ? 'group-hover/ep:ring-white/30' : 'opacity-50'
                     }`}
                   >
                     {ep.still_path ? (
-                      <Image
-                        src={`https://image.tmdb.org/t/p/w500${ep.still_path}`}
-                        alt=""
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                        className="object-cover"
-                      />
+                      <Image src={`https://image.tmdb.org/t/p/w300${ep.still_path}`} alt="" fill sizes="288px" className="object-cover" />
                     ) : (
-                      <span className="absolute inset-0 flex items-center justify-center text-3xl font-bold text-white/15">
-                        E{ep.episode_number}
-                      </span>
+                      <span className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-white/15">E{ep.episode_number}</span>
                     )}
                     {ok && (
                       <span className="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition group-hover/ep:opacity-100">
-                        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-black">
+                        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-black">
                           <Play className="ml-0.5 h-5 w-5 fill-black" />
                         </span>
                       </span>
                     )}
+                    <span className="absolute left-2 top-2 rounded-md bg-black/70 px-2 py-0.5 text-[12px] font-semibold text-white backdrop-blur">
+                      E{ep.episode_number}
+                    </span>
                     {isResume && ok && (
-                      <span className="absolute left-2 top-2 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-black">
-                        Continue
+                      <span className="absolute right-2 top-2 flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[11px] font-semibold text-black">
+                        <Play className="h-3 w-3 fill-black" /> Continue
+                      </span>
+                    )}
+                    {ok && runtime && (
+                      <span className="absolute bottom-2 right-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur">
+                        {runtime}
                       </span>
                     )}
                     {!ok && (
-                      <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
+                      <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded-md bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">
                         <CalendarClock className="h-3 w-3" /> {fmtDate(ep.air_date)}
                       </span>
                     )}
                   </div>
-                  <p className="mt-3 text-xs font-medium text-white/50">
-                    E{ep.episode_number}
-                    {fmtMin(ep.runtime) ? ` · ${fmtMin(ep.runtime)}` : ''}
-                    {ep.air_date && ok ? ` · ${fmtDate(ep.air_date)}` : ''}
-                  </p>
-                  <p className="mt-0.5 line-clamp-1 text-[15px] font-semibold text-white">{ep.name || `Episode ${ep.episode_number}`}</p>
-                  {ep.overview && <p className="mt-1 line-clamp-2 text-sm leading-snug text-white/60">{ep.overview}</p>}
+                  <p className="mt-2.5 line-clamp-1 text-[15px] font-semibold text-white">{ep.name || `Episode ${ep.episode_number}`}</p>
+                  {ep.overview && <p className="mt-1 line-clamp-2 text-[13px] leading-snug text-white/60">{ep.overview}</p>}
                 </>
               );
+              const cls = 'block w-60 shrink-0 md:w-72';
               return ok && season != null ? (
-                <Link key={ep.episode_number} href={watchHref('tv', tvId, season, ep.episode_number)} className="group/ep block">
+                <Link key={ep.episode_number} href={watchHref('tv', tvId, season, ep.episode_number)} className={`group/ep ${cls}`}>
                   {card}
                 </Link>
               ) : (
-                <div key={ep.episode_number} aria-disabled className="cursor-not-allowed">
+                <div key={ep.episode_number} aria-disabled className={`${cls} cursor-not-allowed`}>
                   {card}
                 </div>
               );
-            })}
-          </div>
-        )}
-      </section>
+            })
+          )}
+        </RowScroller>
+      </div>
     </>
   );
 }
