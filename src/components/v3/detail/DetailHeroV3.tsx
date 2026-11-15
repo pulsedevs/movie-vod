@@ -11,7 +11,7 @@ import { AmbientFrom, ambientSrc } from '../ambient/AmbientContext';
 import { useV3Scroll } from '../V3Shell';
 import { useTrailersPref } from '../prefs';
 import TrailerModal from './TrailerModal';
-import BackdropTrailer from './BackdropTrailer';
+import BackdropTrailer, { preconnectYouTube } from './BackdropTrailer';
 
 export interface InfoRow {
   label: string;
@@ -149,6 +149,8 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
     return () => io.disconnect();
   }, [scroll]);
 
+  // Connect to YouTube while the page is still loading (in the server HTML), so the trailer starts sooner.
+  if (trailerKey && trailersOn) preconnectYouTube();
   const bgTrailer = !!trailerKey && trailersOn && canAutoplay;
   const bgActive = bgTrailer && !trailer && inView && tabVisible;
 

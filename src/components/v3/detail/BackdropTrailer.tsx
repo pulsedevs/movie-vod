@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { preconnect } from 'react-dom';
 
 interface BackdropTrailerProps {
   youtubeKey: string;
@@ -9,14 +10,22 @@ interface BackdropTrailerProps {
   muted: boolean;
   /** Reports when frames are actually on screen, so the page can show the mute button. */
   onPlayingChange?: (playing: boolean) => void;
-  /** Wait before loading the video (the detail hero lets the page settle; a hover card starts sooner). */
+  /** Wait before loading the video (default: none, it starts as soon as the page allows it). */
   delayMs?: number;
 }
 
-const START_DELAY_MS = 2500;
+const START_DELAY_MS = 0;
 /** Shown only after the video clock has moved this far while playing: by then YouTube's start
- *  overlay and any play/pause icon have faded out. */
+ *  overlay and its play/pause icon have faded out (at 0.4 s the pause icon still shows). */
 const SETTLE_SECONDS = 1;
+
+/** Open the connections the embed needs (player page, player script, thumbnails) ahead of it;
+ *  React hoists these hints into <head>, in the server HTML too. */
+export function preconnectYouTube() {
+  preconnect('https://www.youtube-nocookie.com');
+  preconnect('https://www.youtube.com');
+  preconnect('https://i.ytimg.com');
+}
 /** Paused only after the fade-out: YouTube draws its play button the instant it pauses. */
 const PAUSE_AFTER_MS = 400;
 
@@ -51,7 +60,9 @@ export default function BackdropTrailer({
   const pausedByUs = useRef(false);
   const mutedSent = useRef(true); // the URL starts it muted
 
-  // Let the page and the backdrop settle first; a trailer that pops in instantly feels jumpy.
+  preconnectYouTube();
+
+  // Load the player (after `delayMs`, if any); it fades in only once it is really playing.
   useEffect(() => {
     setMounted(false);
     setSettled(false);
@@ -171,7 +182,7 @@ export default function BackdropTrailer({
     <div
       aria-hidden
       className={`absolute inset-0 overflow-hidden transition-opacity ${
-        visible ? 'opacity-100 duration-[900ms]' : 'opacity-0 duration-200'
+        visible ? 'opacity-100 duration-[600ms]' : 'opacity-0 duration-200'
       }`}
       style={{ containerType: 'size' }}
     >
