@@ -207,7 +207,7 @@ export default function SearchV3({
 
       {!searching ? (
         trending.length > 0 && (
-          <section className="mt-14 md:mt-20" aria-labelledby="trending-today">
+          <section className="mt-20 md:mt-36" aria-labelledby="trending-today">
             <h2 id="trending-today" className="mb-6 text-center text-lg font-medium tracking-tight text-white md:text-xl">
               Trending Today
             </h2>
