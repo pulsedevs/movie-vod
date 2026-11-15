@@ -166,7 +166,7 @@ function Btn({ onClick, label, children, active, expanded }: {
 }
 
 const CSS = `
-.lp-player{--lp:#4ade80;color:#fff;font-size:14px;line-height:1}
+.lp-player{--lp:#fff;color:#fff;font-size:14px;line-height:1}
 .lp-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:1}
 .lp-big{pointer-events:auto;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:999px;width:80px;height:80px;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);transition:transform .15s,background .15s}
 .lp-big:hover{transform:scale(1.06);background:rgba(255,255,255,.2)}
@@ -203,7 +203,7 @@ const CSS = `
 .lp-range::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#fff;border:0}
 .lp-vol:hover .lp-range,.lp-range:focus-visible{width:72px;opacity:1;margin:0 10px 0 4px}
 .lp-shield{position:absolute;inset:0;z-index:2}
-.lp-panel{position:absolute;right:32px;bottom:76px;z-index:4;width:343px;max-width:calc(100% - 32px);max-height:calc(100% - 140px);overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;background:rgba(15,15,15,.72);backdrop-filter:blur(28px) saturate(1.8);-webkit-backdrop-filter:blur(28px) saturate(1.8);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.5);line-height:1.2}
+.lp-panel{position:absolute;right:32px;bottom:76px;z-index:4;width:343px;max-width:calc(100% - 32px);max-height:calc(100% - 140px);overflow:auto;overscroll-behavior:contain;scrollbar-width:none;background:rgba(15,15,15,.72);backdrop-filter:blur(28px) saturate(1.8);-webkit-backdrop-filter:blur(28px) saturate(1.8);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.5);line-height:1.2}
 .lp-tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .lp-tile{display:flex;flex-direction:column;justify-content:center;gap:7px;min-height:80px;min-width:0;padding:14px;text-align:left;color:#fff;font:inherit;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer;transition:background .15s}
 .lp-tile:hover{background:rgba(255,255,255,.1)}
@@ -219,21 +219,22 @@ const CSS = `
 .lp-grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lp-sub{color:rgba(255,255,255,.5);font-size:13px;font-weight:500;white-space:nowrap}
 .lp-ico{color:rgba(255,255,255,.75);flex:none}
-.lp-check{color:#22c55e;flex:none}
+.lp-check{color:#fff;flex:none}
 .lp-phead{display:flex;align-items:center;gap:6px;margin:-6px 0 8px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.1);font-size:16px;font-weight:700}
 .lp-phead button{display:flex;align-items:center;justify-content:center;width:32px;height:32px;margin-left:-8px;color:#fff;background:none;border:0;border-radius:999px;cursor:pointer}
 .lp-phead button:hover{background:rgba(255,255,255,.1)}
 .lp-switch{position:relative;width:44px;height:24px;border-radius:999px;background:rgba(255,255,255,.2);transition:background .2s;flex:none}
 .lp-switch::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s}
 .lp-switch.on{background:var(--lp)}
-.lp-switch.on::after{transform:translateX(20px)}
+.lp-switch.on::after{transform:translateX(20px);background:#111}
 .lp-menu{position:absolute;bottom:46px;right:0;background:rgba(15,15,15,.72);backdrop-filter:blur(28px) saturate(1.8);-webkit-backdrop-filter:blur(28px) saturate(1.8);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:6px;display:flex;flex-direction:column;min-width:96px;box-shadow:0 20px 50px rgba(0,0,0,.5)}
 .lp-menu button{background:none;border:0;color:#fff;text-align:left;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px}
 .lp-menu button:hover{background:rgba(255,255,255,.1)}
 .lp-menu button.on{color:var(--lp);font-weight:700}
 .lp-menu button:disabled{opacity:.45;cursor:not-allowed}
 .lp-menu button:disabled:hover{background:none}
-.lp-vermenu{min-width:220px;max-height:260px;overflow:auto}
+.lp-vermenu{min-width:220px;max-height:260px;overflow:auto;scrollbar-width:none}
+.lp-panel::-webkit-scrollbar,.lp-vermenu::-webkit-scrollbar{display:none}
 .lp-ok{color:var(--lp);font-weight:700}
 .lp-dim{opacity:.6}
 .lp-speed{position:relative}

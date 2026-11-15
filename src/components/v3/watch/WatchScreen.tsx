@@ -99,7 +99,7 @@ export default function WatchScreen(props: WatchScreenProps) {
   // A show's episode that isn't on our servers: the older player with its outside servers.
   if (missing && kind === 'tv') {
     return (
-      <div className="v3-root fixed inset-0 overflow-y-auto bg-black text-white">
+      <div className="v3-root fixed inset-0 overflow-y-auto bg-black text-white [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="sticky top-0 z-10 bg-gradient-to-b from-black via-black/80 to-transparent px-[18px] pb-6 pt-3.5">{header}</div>
         <div className="mx-auto max-w-[1400px] px-4 pb-10">
           <MoviePlayer
