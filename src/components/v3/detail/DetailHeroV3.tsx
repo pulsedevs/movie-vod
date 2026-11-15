@@ -61,7 +61,7 @@ function Overview({ text }: { text: string }) {
   }, [text]);
   return (
     <div className="max-w-[620px]">
-      <p ref={ref} className={`text-base leading-relaxed text-white/80 md:text-[17px] ${open ? '' : 'line-clamp-3'}`}>
+      <p ref={ref} className={`text-sm leading-relaxed text-white/80 md:text-[15px] ${open ? '' : 'line-clamp-3'}`}>
         {text}
       </p>
       {(long || open) && (
@@ -190,8 +190,8 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
       )}
 
       <div className="v3-gutter relative z-10 flex min-h-[min(86vh,960px)] flex-col justify-end pb-10 pt-28">
-        {/* Bottom of the hero: the text column and the info box side by side, aligned to the top. */}
-        <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
+        {/* Bottom of the hero: the text column and the info box side by side, bottoms lined up. */}
+        <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
         <div className="max-w-[680px]">
           {logoPath && logoOk ? (
             <>
@@ -201,7 +201,7 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
                 src={`https://image.tmdb.org/t/p/w780${logoPath}`}
                 alt={title}
                 onError={() => setLogoOk(false)}
-                className="mb-4 max-h-[110px] w-auto max-w-[80%] object-contain object-left drop-shadow-[0_4px_24px_rgba(0,0,0,0.5)] md:max-h-[144px] md:max-w-[500px]"
+                className="mb-4 max-h-[110px] w-auto max-w-[80%] object-contain object-left drop-shadow-[0_4px_24px_rgba(0,0,0,0.5)] md:max-h-[170px] md:max-w-[560px]"
               />
             </>
           ) : (
@@ -275,9 +275,10 @@ export default function DetailHeroV3(props: DetailHeroV3Props) {
           {overview && <Overview text={overview} />}
         </div>
 
-        {/* The info box sits 160px below the top of the logo (like cinejoy's), so a long overview or a
-            tall logo never pushes it down out of view; the network logo hangs just below it. */}
-        <aside className="relative w-full shrink-0 md:mt-40 md:w-[280px]">
+        {/* The info box's bottom lines up with the text column's (low, so it covers less of the
+            picture); the overview's 3-line clamp keeps that column short enough for the box to stay in
+            view. The network logo hangs just below it. */}
+        <aside className="relative w-full shrink-0 md:w-[280px]">
           {info.length > 0 && (
             <dl className="overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.04] text-xs backdrop-blur-sm">
               {info.map((row, i) => (
