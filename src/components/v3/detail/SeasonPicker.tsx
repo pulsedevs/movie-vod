@@ -61,7 +61,7 @@ export default function SeasonPicker({
           ref={listRef}
           role="listbox"
           aria-label="Seasons"
-          className="v3-pop v3-cascade absolute left-0 top-full z-40 mt-3 max-h-80 w-[286px] overflow-y-auto rounded-2xl border border-white/10 bg-[rgba(22,22,24,0.82)] p-1.5 text-base font-normal tracking-normal shadow-[0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="v3-pop v3-cascade absolute left-0 top-full z-40 mt-3 max-h-80 w-[286px] overflow-y-auto rounded-2xl border border-white/10 bg-[rgba(20,20,20,0.6)] p-1.5 text-base font-normal tracking-normal shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-[28px] backdrop-saturate-[1.8] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {seasons.map((s) => {
             const on = s.season_number === value;
