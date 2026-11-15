@@ -1,6 +1,6 @@
 export const LOGO_VIEWBOX    = '0 0 400 90';
 /** Gap between couch lockup and wordmark */
-export const LOGO_WORDMARK_X = 110;
+export const LOGO_WORDMARK_X = 116;
 export const BOREDFLIX_WORDMARK = 'BoredFlix';
 
 /** Wordmark — white Bored + warm cream Flix (matches search accent, not loud orange). */
@@ -35,7 +35,27 @@ export const LOGO_PLAY_STROKE       = LOGO_COUCH_BACK_HIGHLIGHT;
 export const LOGO_PLAY_HOVER_FILL   = '#FFF9F3';
 export const LOGO_PLAY_HOVER_STROKE = '#E05050';
 
+/** The yellow couch (popcorn + clapper with its own play button): transparent art, 1200x747 master
+ *  cut to 320px. Sits where the drawn couch was: centred on x=55, feet on y=86. */
+export const LOGO_COUCH_SRC = '/brand/couch.webp';
+const COUCH_H = 66;
+const COUCH_W = Math.round(COUCH_H * (1200 / 747) * 10) / 10;
+
 export function BoredFlixCouchGraphic() {
+  return (
+    <image
+      href={LOGO_COUCH_SRC}
+      x={55 - COUCH_W / 2}
+      y={86 - COUCH_H}
+      width={COUCH_W}
+      height={COUCH_H}
+      preserveAspectRatio="xMidYMid meet"
+    />
+  );
+}
+
+/** The old drawn red couch, kept for reference. */
+export function BoredFlixRedCouchGraphic() {
   return (
     <>
       <rect x="30" y="72" width="11" height="14" rx="3" fill={LOGO_COUCH_LEG} />
@@ -56,7 +76,14 @@ export function BoredFlixCouchGraphic() {
   );
 }
 
+/** The yellow couch art has its own play button, so the drawn one is off. */
 export function BoredFlixPlayGraphic({ highlight = false }: { highlight?: boolean }) {
+  void highlight;
+  return null;
+}
+
+/** The play control drawn on the old red couch. */
+export function BoredFlixRedPlayGraphic({ highlight = false }: { highlight?: boolean }) {
   const fill = highlight ? LOGO_PLAY_HOVER_FILL : LOGO_PLAY_FILL;
   const stroke = highlight ? LOGO_PLAY_HOVER_STROKE : LOGO_PLAY_STROKE;
   const cx = LOGO_PLAY_CX;
