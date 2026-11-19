@@ -23,7 +23,7 @@ if (!fs.existsSync(mod)) { console.error('tsc did not emit the loader\n', r.stdo
 const hlsUrl = 'file:///' + path.join(here, 'node_modules', 'hls.js', 'dist', 'hls.mjs').replace(/\\/g, '/');
 let js = fs.readFileSync(mod, 'utf8').replace(/from ['"]hls\.js['"]/g, `from '${hlsUrl}'`);
 fs.writeFileSync(mod, js);
-const { unwrap, isPng, makeCanvasLoader } = await import('file://' + mod.replace(/\\/g, '/'));
+const { unwrap, isPng, makeCanvasLoader, splitFallback } = await import('file://' + mod.replace(/\\/g, '/'));
 
 let fails = 0;
 const expect = (what, ok, got) => { if (!ok) fails++; console.log(`${ok ? 'ok ' : 'BAD'} ${what}${ok ? '' : ': ' + JSON.stringify(got)}`); };
@@ -58,6 +58,17 @@ expect('a .ts segment is not treated as a piece', !isPng(ts));
 let threw = false;
 try { await unwrap(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0])); } catch { threw = true; }
 expect('a PNG with no payload chunks rejects', threw);
+
+// the '#' fallback split (backend wrote "<cdn url>#<box url>")
+const cdn = 'https://p16-ad-site-sign-sg.tiktokcdn.com/x~tplv.image?lk3s=a&x-expires=1&x-signature=b%2Fc';
+const box = 'https://cdn2.gmmds.space/vod/v/PID/src.mp4/seg-5-f1-v1.m4s';
+let s = splitFallback(cdn + '#' + box);
+expect('splitFallback: primary is the CDN url, clean', s.primary === cdn, s.primary);
+expect('splitFallback: fallback is the box url', s.fallback === box, s.fallback);
+s = splitFallback(box);
+expect('splitFallback: a plain url has no fallback', s.primary === box && s.fallback === '', s);
+s = splitFallback(cdn);
+expect('splitFallback: a CDN url with query but no fallback is left whole', s.primary === cdn && s.fallback === '', s);
 
 console.log(fails ? `${fails} FAILED` : 'all good');
 process.exit(fails ? 1 : 0);

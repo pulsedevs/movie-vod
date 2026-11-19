@@ -47,23 +47,44 @@ export async function unwrap(u: Uint8Array): Promise<ArrayBuffer> {
   return out.buffer;
 }
 
+// A segment url the backend wrote as "<image-CDN url>#<our-box url>" (see vod.py _fb): the CDN copy to try
+// first, and the same segment on our box to fall back to if the CDN fails (a banned/expired account). The
+// '#' is a URL fragment, so the browser never sends it to the CDN. Returns the two, or {primary} with no
+// fallback for a plain url.
+export function splitFallback(url: string): { primary: string; fallback: string } {
+  const h = (url || '').indexOf('#http');
+  return h < 0 ? { primary: url, fallback: '' } : { primary: url.slice(0, h), fallback: url.slice(h + 1) };
+}
+
 export function makeCanvasLoader(): any | null {
   const Base = (Hls as any).DefaultConfig?.loader;
   if (!Base || typeof (globalThis as any).DecompressionStream === 'undefined') return null;
   return class CanvasLoader extends Base {
     load(ctx: any, cfg: any, cb: any) {
       const ok = cb.onSuccess;
-      super.load(ctx, cfg, {
-        ...cb,
-        onSuccess: (r: any, st: any, c: any, n: any) => {
-          const u = r && r.data instanceof ArrayBuffer ? new Uint8Array(r.data) : null;
-          if (!u || !isPng(u)) return ok(r, st, c, n);
-          unwrap(u).then(
-            (b) => { if (this.stats && this.stats.aborted) return; r.data = b; ok(r, st, c, n); },
-            (e) => { if (this.stats && this.stats.aborted) return; cb.onError({ code: 0, text: String(e && e.message || e) }, c, n, st); },
-          );
-        },
-      });
+      const { primary, fallback } = splitFallback(ctx.url);
+      ctx.url = primary;                       // fetch the clean CDN url (never the '#…' part)
+      let triedFallback = false;
+      const done = (r: any, st: any, c: any, n: any) => {
+        // CDN pieces are PNG-wrapped; our box serves the raw segment — isPng passes the raw one through.
+        const u = r && r.data instanceof ArrayBuffer ? new Uint8Array(r.data) : null;
+        if (!u || !isPng(u)) return ok(r, st, c, n);
+        unwrap(u).then(
+          (b) => { if (this.stats && this.stats.aborted) return; r.data = b; ok(r, st, c, n); },
+          (e) => { if (this.stats && this.stats.aborted) return; cb.onError({ code: 0, text: String((e && e.message) || e) }, c, n, st); },
+        );
+      };
+      const onErr = (e: any, c: any, n: any, st: any) => {
+        // CDN segment failed (ban, expired link, blocked host): fetch the same piece from our box, once.
+        if (fallback && !triedFallback && !(this.stats && this.stats.aborted)) {
+          triedFallback = true;
+          ctx.url = fallback;
+          super.load(ctx, cfg, { ...cb, onSuccess: done, onError: cb.onError });
+          return;
+        }
+        cb.onError(e, c, n, st);
+      };
+      super.load(ctx, cfg, { ...cb, onSuccess: done, onError: onErr });
     }
   };
 }
