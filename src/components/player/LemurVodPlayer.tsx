@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as RPointerEvent, ReactNode } from 'react';
 import Hls from 'hls.js';
+import { makeCanvasLoader } from './canvasLoader';
 import { markWatched } from '@/components/v3/watch/watched';
 
 interface Props {
@@ -454,10 +455,14 @@ export default function LemurVodPlayer({ tmdbId, title, origLang, poster, classN
     };
 
     if (Hls.isSupported()) {
+      // Segments the backend offloaded to the image CDN come wrapped as PNG; this fragment loader
+      // unwraps them and passes our own segments through (null on browsers that cannot unwrap).
+      const canvasLoader = makeCanvasLoader();
       const hls = new Hls({
         enableWorker: true, lowLatencyMode: false, maxBufferLength: 30, backBufferLength: 60,
         startPosition: saved || -1,          // resume where they left off, else from the top
         enableCEA708Captions: false,         // only the stream's own subtitle tracks, drawn by us
+        ...(canvasLoader ? { fLoader: canvasLoader } : {}),
       });
       hlsRef.current = hls;
       // Subtitles are drawn by the player (above the controls), not by the browser: hls.js keeps the
